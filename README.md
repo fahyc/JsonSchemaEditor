@@ -15,8 +15,10 @@ A saved browser workspace takes precedence over startup files. The **?** menu ha
 - Click any graph node for the full-screen editor. Change field names, types, descriptions, and required flags.
 - **Add child object** searches canonical types across all loaded schema files, including the current type. Selecting a type stores a `$ref`. Creating a type adds one `$defs` definition. Self-references and cycles are retained, never expanded recursively into duplicate graph nodes.
 - Imported inline objects keep their original JSON Pointer identity. Reference aliases lead to the target's canonical node.
-- **Rules** edits an individual field's schema JSON. This is where enum choices, constants, array items, nullable type lists, and field constraints can be authored. **Rules & constraints** edits object-level keywords, including dictionaries and conditional rules. **Advanced JSON** edits the entire selected schema node without losing keywords.
-- To make an array of a canonical type, use a field schema such as `{"type":"array","items":{"$ref":"#/$defs/MyType"}}` in its Rules editor.
+- Use the **Array** checkbox beside a field's type to make a list. While checked, the dropdown edits the item type, including an object reference or enum. Item constraints are preserved when wrapping/unwrapping. Changing the item type preserves array-level constraints; unchecking Array removes its array-level bounds and uniqueness constraints. Rules remains available for nested arrays and tuple schemas.
+- Choose **enum** from the type dropdown to open the choices widget, or use **Edit enum** on an existing enum field. Add, remove, edit, and reorder typed choices without writing an enum JSON array. Strings (including empty strings), numbers, booleans, null, and JSON values are supported; duplicate and invalid values cannot be saved.
+- **Rules** edits an individual field's full schema JSON. **Rules & constraints** edits object-level keywords, including dictionaries and conditional rules. **Advanced JSON** edits the entire selected schema node without losing keywords.
+- The **×** on a schema node previews how many incoming references will be removed, then deletes the node and its referencing fields, aliases, or union variants across loaded schemas. Required lists and shifted union JSON Pointers are repaired. Removing the last choice makes the union unsatisfiable instead of allowing arbitrary data. Schema deletion keeps data drafts; deleting their root schema requires reimporting it before those drafts can validate. Undo restores the whole edit.
 - `oneOf` nodes show their variants, with open, add, remove, and JSON-rule controls.
 - **All schemas** shows the complete library. The normal view includes the selected schema and external types it references. Drag the canvas (or drag from a node) to pan; use the mouse wheel or trackpad scroll to zoom around the pointer. A normal click still opens a node. **Fit** shows the whole graph; the percentage button returns to 100% and recenters the root. The +/− buttons zoom around the viewport center. Editor forms retain normal scrolling. Hover over a connection for its field label.
 - Parent-to-child columns use family spacing: descendants reserve vertical space, siblings stay together, and their parent is centered over the group. Shared types are positioned once under a deterministic primary parent; all other links, self-links, and cycles remain visible. Different documents and disconnected groups have extra separation.
@@ -30,6 +32,7 @@ A saved browser workspace takes precedence over startup files. The **?** menu ha
 4. **Find ID / name** searches all loaded data files, with instance-type and identifier-field filters. It inserts only a string. It never copies an object or creates a shared data node. Array reference fields such as `entryContacts` also support search. Import world/region data alongside mission data to supply cross-document candidates.
 5. Schema-defined dictionaries support arbitrary keys constrained by `propertyNames`, with values edited against `additionalProperties`. Other undeclared fields cannot be created in the form editor.
 6. Validation reports JSON Pointers and constraints. Click a data error to open the nearest owning node. Invalid imports are retained for repair, including undeclared fields that can be removed. Export and the data JSON editor require valid data.
+7. The **×** on a data node removes that instance and its contained children. Confirmation shows the parent link plus matching ID/name reference fields in all loaded data files. Review the selected matches and uncheck ambiguous ones; the count updates. Scalar references are removed as fields, and array references are removed as elements. Ordinary same-valued prose is preserved. Missing required fields appear in Validation. Undo restores the instance and removed references together. Only loaded data files can be checked or changed.
 
 Reference target meanings are not formally encoded in these JSON Schemas. Search uses field names/descriptions to suggest a type and identifier; its visible filters let you correct an ambiguous relationship. External IDs may be typed directly. It does not assert game-world existence or implement engine-only checks described in prose, such as outcome membership, journal event ordering, globally unique IDs, or whether a referenced location exists.
 
@@ -52,6 +55,7 @@ Run the dependency-free contract tests:
 ```sh
 node --test core.test.cjs
 node --test layout.test.cjs
+node --test editing.test.cjs
 ```
 
 For browser integration tests, install Playwright in your development environment and run `node browser.test.cjs`. The test uses a headless installed Microsoft Edge, isolated from your normal browser profile. Set `PLAYWRIGHT_MODULE` to a package directory if Playwright is installed outside this project. It exercises startup from disk, schema editing/undo, canonical self-links, data variants, import/export, persistence, cross-file ID search, array references, dictionaries, conditionals, and escaping imported text. It generates `preview.png`.
@@ -59,3 +63,5 @@ For browser integration tests, install Playwright in your development environmen
 The production application uses no Playwright or Node dependency.
 
 `node navigation.test.cjs` checks pointer-centered zoom, drag/click separation, editor scrolling, Fit/reset, and keyboard focus. It uses the same Playwright setup and generates layout screenshots.
+
+`node feedback.test.cjs` checks array/reference toggles, typed enum editing, schema/data node deletion, reference counts, cancellation, undo, and persistence with the same Playwright setup.
