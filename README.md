@@ -18,7 +18,8 @@ A saved browser workspace takes precedence over startup files. The **?** menu ha
 - **Rules** edits an individual field's schema JSON. This is where enum choices, constants, array items, nullable type lists, and field constraints can be authored. **Rules & constraints** edits object-level keywords, including dictionaries and conditional rules. **Advanced JSON** edits the entire selected schema node without losing keywords.
 - To make an array of a canonical type, use a field schema such as `{"type":"array","items":{"$ref":"#/$defs/MyType"}}` in its Rules editor.
 - `oneOf` nodes show their variants, with open, add, remove, and JSON-rule controls.
-- **All schemas** shows the complete library. The normal view includes the selected schema and external types it references. Search and zoom help navigate large graphs. Hover over a connection for its field label.
+- **All schemas** shows the complete library. The normal view includes the selected schema and external types it references. Drag the canvas (or drag from a node) to pan; use the mouse wheel or trackpad scroll to zoom around the pointer. A normal click still opens a node. **Fit** shows the whole graph; the percentage button returns to 100% and recenters the root. The +/− buttons zoom around the viewport center. Editor forms retain normal scrolling. Hover over a connection for its field label.
+- Parent-to-child columns use family spacing: descendants reserve vertical space, siblings stay together, and their parent is centered over the group. Shared types are positioned once under a deterministic primary parent; all other links, self-links, and cycles remain visible. Different documents and disconnected groups have extra separation.
 - Export preserves `$defs`, inline structures, `$ref`, descriptions, defaults, and constraints. The app offers separate download buttons for external schema dependencies. Keep the exported schema and its dependencies together.
 
 ## Data authoring
@@ -50,8 +51,11 @@ Run the dependency-free contract tests:
 
 ```sh
 node --test core.test.cjs
+node --test layout.test.cjs
 ```
 
 For browser integration tests, install Playwright in your development environment and run `node browser.test.cjs`. The test uses a headless installed Microsoft Edge, isolated from your normal browser profile. Set `PLAYWRIGHT_MODULE` to a package directory if Playwright is installed outside this project. It exercises startup from disk, schema editing/undo, canonical self-links, data variants, import/export, persistence, cross-file ID search, array references, dictionaries, conditionals, and escaping imported text. It generates `preview.png`.
 
 The production application uses no Playwright or Node dependency.
+
+`node navigation.test.cjs` checks pointer-centered zoom, drag/click separation, editor scrolling, Fit/reset, and keyboard focus. It uses the same Playwright setup and generates layout screenshots.

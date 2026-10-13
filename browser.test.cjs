@@ -11,6 +11,7 @@ const path=require('node:path');
   assert.match(await page.locator('#counts').innerText(),/nodes/);
   await page.screenshot({path:path.join(__dirname,'preview.png')});
   // Canonical field edits and lossless schema preservation.
+  await page.locator('.node').filter({hasText:'Faction'}).first().focus();
   await page.locator('.node').filter({hasText:'Faction'}).first().click();
   await page.locator('#type-description').fill('Edited description');await page.locator('#type-description').press('Tab');
   await page.locator('#close-editor').click();await page.locator('#undo').click();
@@ -42,7 +43,7 @@ const path=require('node:path');
   await page.locator('.data-row').filter({has:page.locator('.data-label',{hasText:'entryContacts'})}).locator('.child-button').click();
   await page.getByRole('button',{name:'Find ID / name'}).click();await page.locator('#ref-results button').filter({hasText:'contact-1'}).click();
   await page.locator('#close-editor').click();
-  await page.locator('#search').fill('/onOutcome');await page.locator('.node').filter({hasText:'onOutcome'}).first().click();
+  await page.locator('#search').fill('/onOutcome');await page.locator('.node').filter({hasText:'onOutcome'}).first().focus();await page.locator('.node').filter({hasText:'onOutcome'}).first().click();
   await page.locator('#add-entry').click();await page.locator('#new-name').fill('done');await page.locator('#name-create').click();
   await page.locator('.child-button').click();
   // Default operation=create makes title conditionally required.

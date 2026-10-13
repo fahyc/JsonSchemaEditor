@@ -5,6 +5,7 @@ const h=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt
 const STORE='schema-dock.workspace.v1';
 let state={schemas:C.clone(window.DEFAULT_SCHEMAS||{}),data:[],activeSchema:'RegionResponseV5.schema.json',activeData:null,mode:'schema'};
 let undo=[],redo=[],zoom=1,selection=null,currentGraph,toastTimer,hasSaved=false;
+let camera={x:0,y:0},graphLayout=null,viewKey=null,pan=null,suppressGraphClick=false;
 try {const saved=localStorage.getItem(STORE);if(saved){const v=JSON.parse(saved);if(v.schemas&&Array.isArray(v.data)){state=v;hasSaved=true;}}}catch{}
 function notify(message){$('#toast').textContent=message;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),4000);}
 function persist(){try{localStorage.setItem(STORE,JSON.stringify(state));$('#save-state').textContent='● Saved in this browser';}catch{$('#save-state').textContent='Storage unavailable · export to save';}}
@@ -53,26 +54,65 @@ function drawGraph(){
   currentGraph=g;
   const term=$('#search').value.toLowerCase();const nodes=g.nodes.filter(n=>!term||(n.name+' '+(n.path||'')+' '+JSON.stringify(state.mode==='schema'?n.schema:n.value)).toLowerCase().includes(term));const keys=new Set(nodes.map(n=>n.key));const edges=g.edges.filter(e=>keys.has(e.from)&&keys.has(e.to));
   $('#counts').textContent=nodes.length+' nodes / '+edges.length+' links';$('#empty').hidden=!!nodes.length;$('#empty').textContent=term?'No matching nodes.':state.mode==='data'?'Create or import a data file to start building its tree.':'No object nodes yet.';
-  // Deterministic breadth-first layers. Back-edges remain visible; cycles never recurse.
-  const levels=new Map();const incoming=new Set(edges.map(e=>e.to));const roots=nodes.filter(n=>!incoming.has(n.key)||n.path==='');
-  const queue=roots.map(n=>n.key);queue.forEach(k=>levels.set(k,0));for(let i=0;i<queue.length;i++){const key=queue[i];for(const e of edges.filter(e=>e.from===key))if(!levels.has(e.to)){levels.set(e.to,Math.min(5,levels.get(key)+1));queue.push(e.to);}}
-  for(const n of nodes)if(!levels.has(n.key))levels.set(n.key,0);
-  const rowCounts={},positions=new Map();nodes.forEach(n=>{const col=levels.get(n.key),row=rowCounts[col]||0;rowCounts[col]=row+1;positions.set(n.key,{x:45+col*365,y:42+row*285});});
-  const width=Math.max(900,...[...positions.values()].map(p=>p.x+325)),height=Math.max(400,...[...positions.values()].map(p=>p.y+275));
-  $('#graph').style.width=width+'px';$('#graph').style.height=height+'px';$('#graph').style.zoom=zoom;
-  $('#nodes').innerHTML=nodes.map((n,i)=>{const pos=positions.get(n.key),isData=state.mode==='data',s=n.schema||{};const fields=isData?Object.entries(n.value):Object.entries(s.properties||{});const union=s.oneOf||s.anyOf;
+  const previousLayout=graphLayout;
+  $('#nodes').innerHTML=nodes.map((n,i)=>{const isData=state.mode==='data',s=n.schema||{};const fields=isData?Object.entries(n.value):Object.entries(s.properties||{});const union=s.oneOf||s.anyOf;
     const rows=fields.slice(0,5).map(([k,v])=>`<div class="node-field"><span>${h(k)}${!isData&&s.required?.includes(k)?'<b class="required"> *</b>':''}</span><span>${h(isData?(v&&typeof v==='object'?(Array.isArray(v)?'['+v.length+']':'object →'):JSON.stringify(v)):typeLabel(v))}</span></div>`).join('');
-    return `<button class="node ${n.path===''?'node-root':''}" data-node="${i}" style="left:${pos.x}px;top:${pos.y}px"><div class="node-head"><span class="node-icon">${isData?'▧':union?'⑂':'◇'}</span><span class="node-name">${h(n.name)}</span><span class="node-kind">${isData?'instance':union?'union':n.path===''?'root':'object'}</span></div><div class="node-fields">${rows||`<p class="hint">${union?union.length+' selectable variants':s.type==='array'?'Array of '+h(typeLabel(s.items)):'No fields yet'}</p>`}${fields.length>5?'<div class="hint">+ '+(fields.length-5)+' more fields</div>':''}</div><div class="node-meta">${isData?h(n.path||'/'):h(n.doc===state.activeSchema?'Click to edit type':'↗ '+n.doc)}</div></button>`;
+    return `<button class="node ${n.path===''?'node-root':''}" data-node="${i}"><div class="node-head"><span class="node-icon">${isData?'▧':union?'⑂':'◇'}</span><span class="node-name">${h(n.name)}</span><span class="node-kind">${isData?'instance':union?'union':n.path===''?'root':'object'}</span></div><div class="node-fields">${rows||`<p class="hint">${union?union.length+' selectable variants':s.type==='array'?'Array of '+h(typeLabel(s.items)):'No fields yet'}</p>`}${fields.length>5?'<div class="hint">+ '+(fields.length-5)+' more fields</div>':''}</div><div class="node-meta">${isData?h(n.path||'/'):h(n.doc===state.activeSchema?'Click to edit type':'↗ '+n.doc)}</div></button>`;
   }).join('');
+  const heights=new Map($$('#nodes .node').map(b=>[nodes[+b.dataset.node].key,b.offsetHeight]));
+  graphLayout=GraphLayout.layoutFamilies(nodes,edges,{heights});
+  const {positions,width,height}=graphLayout;
+  $('#graph').style.width=width+'px';$('#graph').style.height=height+'px';
+  $$('#nodes .node').forEach(b=>{const p=positions.get(nodes[+b.dataset.node].key);b.style.left=p.x+'px';b.style.top=p.y+'px';});
   $$('#nodes .node').forEach(b=>b.onclick=()=>state.mode==='schema'?openSchema(nodes[+b.dataset.node]):openData(nodes[+b.dataset.node].path));
   const svg=$('#edges');svg.setAttribute('width',width);svg.setAttribute('height',height);
-  svg.innerHTML='<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#607f90"/></marker></defs>'+edges.map((e,i)=>{const a=positions.get(e.from),b=positions.get(e.to);let d;const sx=a.x+265,sy=a.y+35,tx=b.x,ty=b.y+35;
-    if(e.from===e.to)d=`M ${sx} ${sy} C ${sx+75} ${sy-95}, ${a.x-70} ${sy-95}, ${a.x} ${ty}`;
+  svg.innerHTML='<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#607f90"/></marker></defs>'+edges.map((e,i)=>{const a=positions.get(e.from),b=positions.get(e.to);let d;const sx=a.x+a.width,sy=a.y+a.height/2,tx=b.x,ty=b.y+b.height/2;
+    if(e.from===e.to)d=`M ${sx} ${sy} C ${sx+65} ${sy}, ${sx+65} ${a.y-28}, ${a.x+a.width/2} ${a.y-28} L ${a.x+a.width/2} ${a.y-2}`;
     else if(tx>sx)d=`M ${sx} ${sy} C ${sx+55} ${sy}, ${tx-55} ${ty}, ${tx} ${ty}`;
-    else d=`M ${sx} ${sy} C ${sx+55+(i%4)*9} ${sy}, ${sx+55+(i%4)*9} ${ty-36}, ${tx+130} ${ty-36} L ${tx+130} ${ty-30}`;
+    else d=`M ${sx} ${sy} C ${sx+45+(i%4)*8} ${sy}, ${sx+45+(i%4)*8} ${b.y-20}, ${tx+b.width/2} ${b.y-20} L ${tx+b.width/2} ${b.y-2}`;
     return `<path d="${d}" fill="none" stroke="#4b6777" stroke-width="1.3" opacity=".65" marker-end="url(#arrow)"><title>${h(e.label)}</title></path>`;}).join('');
+  const nextViewKey=JSON.stringify([state.mode,state.mode==='schema'?state.activeSchema:state.activeData,$('#all-schemas').checked,term]);
+  if(viewKey!==nextViewKey){viewKey=nextViewKey;focusGraph();}
+  else {
+    // Keep a stable landmark on screen when editing changes a family's size.
+    const key=graphLayout.roots.find(k=>previousLayout?.positions.has(k));
+    if(key!==undefined){const old=previousLayout.positions.get(key),now=positions.get(key);camera.x+=(old.x-now.x)*zoom;camera.y+=(old.y+old.height/2-now.y-now.height/2)*zoom;}
+    applyCamera();
+  }
 }
-function setZoom(v){zoom=Math.max(.3,Math.min(1.5,v));$('#zoom-reset').textContent=Math.round(zoom*100)+'%';$('#graph').style.zoom=zoom;}
+function applyCamera(){
+  $('#graph').style.transform=`translate(${camera.x}px,${camera.y}px) scale(${zoom})`;
+  $('#canvas').style.backgroundPosition=`${camera.x}px ${camera.y}px`;
+  $('#canvas').style.backgroundSize=`${22*zoom}px ${22*zoom}px`;
+  $('#zoom-reset').textContent=Math.round(zoom*100)+'%';
+}
+function setZoom(v,anchor){
+  const canvas=$('#canvas'),point=anchor||{x:canvas.clientWidth/2,y:canvas.clientHeight/2},next=Math.max(.04,Math.min(2.5,v));
+  const ratio=next/zoom;camera.x=point.x-(point.x-camera.x)*ratio;camera.y=point.y-(point.y-camera.y)*ratio;zoom=next;applyCamera();
+}
+function focusGraph(){
+  const key=graphLayout?.roots.find(k=>state.mode==='data'||k.startsWith(state.activeSchema+'#'))??graphLayout?.roots[0];
+  const p=graphLayout?.positions.get(key);camera.x=40-(p?.x||0)*zoom;camera.y=p?$('#canvas').clientHeight/2-(p.y+p.height/2)*zoom:40;applyCamera();
+}
+function fitGraph(){if(!graphLayout?.positions.size)return;const c=$('#canvas');zoom=Math.max(.04,Math.min(1,c.clientWidth/graphLayout.width,c.clientHeight/graphLayout.height));camera={x:(c.clientWidth-graphLayout.width*zoom)/2,y:(c.clientHeight-graphLayout.height*zoom)/2};applyCamera();}
+const canvas=$('#canvas');
+canvas.addEventListener('wheel',event=>{event.preventDefault();const rect=canvas.getBoundingClientRect(),units=event.deltaMode===1?16:event.deltaMode===2?canvas.clientHeight:1;setZoom(zoom*Math.exp(-Math.max(-300,Math.min(300,event.deltaY*units))*.0018),{x:event.clientX-rect.left,y:event.clientY-rect.top});},{passive:false});
+canvas.addEventListener('pointerdown',event=>{
+  if(!event.isPrimary||![0,1].includes(event.button))return;
+  suppressGraphClick=false;pan={id:event.pointerId,x:event.clientX,y:event.clientY,camera:{...camera},moved:false};
+  if(event.button===1)event.preventDefault();
+});
+canvas.addEventListener('pointermove',event=>{
+  if(!pan||pan.id!==event.pointerId)return;const dx=event.clientX-pan.x,dy=event.clientY-pan.y;
+  if(!pan.moved&&Math.hypot(dx,dy)<5)return;
+  if(!pan.moved){pan.moved=true;canvas.setPointerCapture(event.pointerId);canvas.classList.add('is-panning');}
+  event.preventDefault();camera={x:pan.camera.x+dx,y:pan.camera.y+dy};applyCamera();
+});
+function endPan(event){if(!pan||pan.id!==event.pointerId)return;suppressGraphClick=pan.moved;pan=null;canvas.classList.remove('is-panning');if(canvas.hasPointerCapture(event.pointerId))canvas.releasePointerCapture(event.pointerId);}
+window.addEventListener('pointerup',endPan);window.addEventListener('pointercancel',endPan);canvas.addEventListener('lostpointercapture',endPan);
+canvas.addEventListener('click',event=>{if(suppressGraphClick&&event.detail!==0){event.preventDefault();event.stopImmediatePropagation();suppressGraphClick=false;}},true);
+// Keyboard users can always bring a tab-focused node into the visible viewport.
+canvas.addEventListener('focusin',event=>{if(pan||!event.target.matches('.node'))return;const rect=event.target.getBoundingClientRect(),bounds=canvas.getBoundingClientRect();if(rect.right<bounds.left||rect.left>bounds.right||rect.bottom<bounds.top||rect.top>bounds.bottom){camera.x+=bounds.left+bounds.width/2-rect.left-rect.width/2;camera.y+=bounds.top+bounds.height/2-rect.top-rect.height/2;applyCamera();}});
 function schemaCurrent(){return selection?.mode==='schema'?C.at(state.schemas[selection.doc],selection.path):null;}
 function openSchema(n){selection={mode:'schema',doc:n.doc,path:n.path};showSchema();if(!$('#editor').open)$('#editor').showModal();}
 function schemaChange(fn){if(change(fn))showSchema();}
@@ -190,7 +230,7 @@ function exportCurrent(){if(state.mode==='schema'){const name=state.activeSchema
 $('#schema-mode').onclick=()=>{state.mode='schema';persist();render();};$('#data-mode').onclick=()=>{state.mode='data';persist();render();};
 $('#new-schema').onclick=()=>askName('Create schema','NewSchema',name=>{const filename=name.endsWith('.json')?name:name+'.schema.json';if(C.own(state.schemas,filename))throw Error('That schema already exists.');change(()=>{state.schemas[filename]={$schema:'https://json-schema.org/draft/2020-12/schema',title:name.replace(/\.schema\.json$/,''),type:'object',properties:{},additionalProperties:false,$defs:{}};state.activeSchema=filename;state.mode='schema';});});
 $('#new-data').onclick=newData;$('#import-schema').onclick=()=>$('#schema-files').click();$('#import-data').onclick=()=>$('#data-files').click();$('#schema-files').onchange=e=>{if(e.target.files.length)importSchemas(e.target.files);e.target.value='';};$('#data-files').onchange=e=>{if(e.target.files.length)importData(e.target.files);e.target.value='';};
-$('#search').oninput=drawGraph;$('#all-schemas').onchange=drawGraph;$('#zoom-in').onclick=()=>setZoom(zoom+.1);$('#zoom-out').onclick=()=>setZoom(zoom-.1);$('#zoom-reset').onclick=()=>setZoom(1);$('#undo').onclick=()=>undoChange();$('#redo').onclick=()=>undoChange(true);$('#export').onclick=exportCurrent;$('#validation-toggle').onclick=()=>{$('#validation-panel').hidden=!$('#validation-panel').hidden;};
+$('#search').oninput=drawGraph;$('#all-schemas').onchange=drawGraph;$('#zoom-in').onclick=()=>setZoom(zoom+.1);$('#zoom-out').onclick=()=>setZoom(zoom-.1);$('#zoom-reset').onclick=()=>{zoom=1;focusGraph();};$('#zoom-fit').onclick=fitGraph;$('#undo').onclick=()=>undoChange();$('#redo').onclick=()=>undoChange(true);$('#export').onclick=exportCurrent;$('#validation-toggle').onclick=()=>{$('#validation-panel').hidden=!$('#validation-panel').hidden;};
 $('#close-editor').onclick=()=>{$('#editor').close();selection=null;render();};
 $('#editor-json').onclick=()=>{if(selection.mode==='schema')editJson('Canonical schema JSON',schemaCurrent(),v=>{assertSchema(v);schemaChange(()=>{if(selection.path)C.put(state.schemas[selection.doc],selection.path,v);else state.schemas[selection.doc]=v;});});else{const d=activeData(),node=dataNode(selection.path);editJson('Instance JSON',node.value,v=>{const errors=C.validate(state.schemas,node.doc,node.schema,v);if(errors.length)throw Error(errors.slice(0,8).map(e=>(e.path||'/')+': '+e.message).join('\n'));dataChange(()=>setData(selection.path,v));});}};
 $('#json-view').onclick=()=>{if(state.mode==='schema')editJson('Schema JSON · '+state.activeSchema,state.schemas[state.activeSchema],v=>{assertSchema(v);change(()=>state.schemas[state.activeSchema]=v);});else {const d=activeData();if(!d){notify('Create or import a data file first.');return;}editJson('Data JSON · '+d.name,d.value,v=>{const errors=C.validate(state.schemas,d.schema,state.schemas[d.schema],v);if(errors.length)throw Error(errors.slice(0,8).map(e=>(e.path||'/')+': '+e.message).join('\n'));change(()=>d.value=v);});}};
