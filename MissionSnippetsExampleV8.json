@@ -1,0 +1,600 @@
+{
+  "schemaVersion": 8,
+  "locationRef": "loc.freeport",
+  "storySnippets": [
+    {
+      "id": "chain.permits-and-filters/offer",
+      "kind": "ConversationNode",
+      "narrative": "Resolve Freeport's citation at Blackrock. A humanitarian delivery may be the way through.",
+      "outcomes": [
+        "accepted",
+        "declined"
+      ],
+      "storedChoices": [
+        {
+          "id": "accept",
+          "kind": "CompleteSnippet",
+          "label": "Accept: Permits and filters",
+          "outcome": "accepted"
+        },
+        {
+          "id": "decline",
+          "kind": "CompleteSnippet",
+          "label": "Decline",
+          "outcome": "declined"
+        }
+      ],
+      "mission": {
+        "missionRef": "chain.permits-and-filters",
+        "onOutcome": {
+          "accepted": {
+            "operation": "create",
+            "title": "Permits and filters",
+            "text": "Resolve Freeport's citation at Blackrock. A humanitarian delivery may be the way through."
+          }
+        }
+      },
+      "speakerRef": "contact.freeport-parent",
+      "outcomeEffects": {
+        "accepted": [
+          {
+            "kind": "CreateContact",
+            "contactRef": "contact.freeport-parent"
+          },
+          {
+            "kind": "CreateContact",
+            "contactRef": "contact.officer-venn"
+          },
+          {
+            "kind": "CreateContact",
+            "contactRef": "contact.engineer-seli"
+          },
+          {
+            "kind": "CreateContact",
+            "contactRef": "contact.second-notice-clerk"
+          }
+        ]
+      }
+    },
+    {
+      "id": "chain.permits-and-filters/scene.parent",
+      "kind": "ConversationNode",
+      "location": "loc.freeport",
+      "narrative": "Your parent places a scorched summons on the workbench. \"Blackrock thinks our station needs planning permission. Go sort it out. Take a coat.\"",
+      "outcomes": [
+        "accept",
+        "decline"
+      ],
+      "prerequisite": {
+        "kind": "StoryOutcome",
+        "snippetRef": "chain.permits-and-filters/offer",
+        "outcome": "accepted"
+      },
+      "storedChoices": [
+        {
+          "id": "accept",
+          "label": "I'll handle it.",
+          "kind": "CompleteSnippet",
+          "narrative": "Your parent hands over the summons. Officer Venn is waiting at Blackrock.",
+          "outcome": "accept"
+        },
+        {
+          "id": "decline",
+          "label": "Not this time.",
+          "kind": "CompleteSnippet",
+          "narrative": "The summons stays on the bench.",
+          "outcome": "decline"
+        },
+        {
+          "id": "ask-why-me",
+          "label": "Why me?",
+          "kind": "LocalDialogue",
+          "narrative": "“Because you have a ship, and because the last person I sent came back with three parking fines.”"
+        }
+      ],
+      "secrets": "The citation is administratively minor. The parent wants a face-saving resolution, not a confrontation.",
+      "speakerRef": "contact.freeport-parent",
+      "mission": {
+        "missionRef": "chain.permits-and-filters",
+        "onOutcome": {
+          "accept": {
+            "operation": "append",
+            "text": "Your parent hands over the summons. Officer Venn is waiting at Blackrock."
+          },
+          "decline": {
+            "operation": "complete",
+            "text": "Declined the family errand."
+          }
+        }
+      }
+    },
+    {
+      "id": "chain.permits-and-filters/scene.venn",
+      "kind": "ConversationNode",
+      "location": "loc.blackrock",
+      "narrative": "Venn lowers their voice. \"Humanitarian transports get processed today. Glasswake needs three filters. Can you carry them?\"",
+      "outcomes": [
+        "accept",
+        "decline"
+      ],
+      "prerequisite": {
+        "kind": "StoryOutcome",
+        "outcome": "accept",
+        "snippetRef": "chain.permits-and-filters/scene.parent"
+      },
+      "storedChoices": [
+        {
+          "id": "accept",
+          "label": "Load the three filters.",
+          "kind": "CompleteSnippet",
+          "narrative": "Three sealed condenser filters are loaded into your hold.",
+          "outcome": "accept"
+        },
+        {
+          "id": "decline",
+          "label": "Decline the delivery.",
+          "kind": "CompleteSnippet",
+          "narrative": "Venn closes the file.",
+          "outcome": "decline"
+        },
+        {
+          "id": "ask-self",
+          "label": "Who are you?",
+          "kind": "LocalDialogue",
+          "narrative": "“Officer Venn. Port compliance. Mostly I keep freight moving and arguments from becoming incidents.”"
+        },
+        {
+          "id": "ask-place",
+          "label": "What should I know about Blackrock?",
+          "kind": "LocalDialogue",
+          "narrative": "“Blackrock runs on shipping queues, refinery grit, and forms that breed when nobody is watching.”"
+        },
+        {
+          "id": "ask-terms",
+          "label": "What exactly are the terms?",
+          "kind": "LocalDialogue",
+          "narrative": "“Three sealed condenser filters to Glasswake Clinic. The permit follows once I have their receipt. Any payment from the clinic is between you and them.”"
+        }
+      ],
+      "secrets": "Venn can use humanitarian transport paperwork to close the citation legally. The filters are genuinely needed.",
+      "speakerRef": "contact.officer-venn",
+      "outcomeEffects": {
+        "accept": [
+          {
+            "kind": "ChangeCargo",
+            "cargoRef": "cargo.filters",
+            "delta": 3
+          },
+          {
+            "kind": "CreateShip",
+            "shipId": "ship-instance.second-notice",
+            "name": "Second Notice",
+            "shipCardRef": "ship.ash-cutter",
+            "factionRef": "faction.ash-levy",
+            "systemRef": "2345674564561",
+            "contactRef": "contact.second-notice-clerk"
+          }
+        ]
+      },
+      "mission": {
+        "missionRef": "chain.permits-and-filters",
+        "onOutcome": {
+          "accept": {
+            "operation": "append",
+            "text": "Three sealed condenser filters are loaded into your hold."
+          },
+          "decline": {
+            "operation": "complete",
+            "text": "Declined the humanitarian delivery."
+          }
+        }
+      }
+    },
+    {
+      "id": "chain.permits-and-filters/scene.intercept",
+      "kind": "ConversationNode",
+      "location": "2345674564561",
+      "narrative": "\"Environmental inspection. Transfer the filters.\" The clinic whispers that this is a protection racket. You can refuse and fight, or attempt another response.",
+      "outcomes": [
+        "fight",
+        "passage"
+      ],
+      "prerequisite": {
+        "kind": "StoryOutcome",
+        "outcome": "accept",
+        "snippetRef": "chain.permits-and-filters/scene.venn"
+      },
+      "storedChoices": [
+        {
+          "id": "fight",
+          "label": "Refuse and prepare to fight.",
+          "kind": "CompleteSnippet",
+          "narrative": "Second Notice powers its weapons.",
+          "outcome": "fight"
+        },
+        {
+          "id": "passage",
+          "label": "Pay 5 credits for passage.",
+          "kind": "CompleteSnippet",
+          "narrative": "The clerk accepts five credits and clears the approach. The filters stay aboard.",
+          "outcome": "passage"
+        },
+        {
+          "id": "ask-faction",
+          "label": "Who authorized you?",
+          "kind": "LocalDialogue",
+          "narrative": "“Ash Levy handles inspection where official capacity is… delayed.”"
+        },
+        {
+          "id": "threaten",
+          "label": "Back off.",
+          "kind": "LocalDialogue",
+          "narrative": "“Threats are noted as evidence of noncompliance.”"
+        }
+      ],
+      "secrets": "The Ash Levy has no official inspection authority. Its clerk prefers an easy fee to a dangerous fight.",
+      "speakerRef": "contact.second-notice-clerk",
+      "outcomeEffects": {
+        "fight": [
+          {
+            "kind": "StartEncounter",
+            "encounterKey": "chain.permits-and-filters/levy",
+            "shipRefs": [
+              "ship-instance.second-notice"
+            ]
+          }
+        ],
+        "passage": [
+          {
+            "kind": "ChangeCredits",
+            "delta": -5
+          }
+        ]
+      },
+      "mission": {
+        "missionRef": "chain.permits-and-filters",
+        "onOutcome": {
+          "fight": {
+            "operation": "append",
+            "text": "Second Notice powers its weapons."
+          },
+          "passage": {
+            "operation": "append",
+            "text": "The clerk accepts five credits and clears the approach. The filters stay aboard."
+          }
+        }
+      }
+    },
+    {
+      "id": "chain.permits-and-filters/scene.clinic",
+      "kind": "ConversationNode",
+      "location": "loc.glasswake",
+      "narrative": "Seli points toward the silent ventilation room. \"Those filters could make quite a difference. Shall we unload them?\"",
+      "outcomes": [
+        "delivered"
+      ],
+      "prerequisite": {
+        "kind": "Any",
+        "conditions": [
+          {
+            "kind": "StoryOutcome",
+            "outcome": "passage",
+            "snippetRef": "chain.permits-and-filters/scene.intercept"
+          },
+          {
+            "kind": "EncounterOutcome",
+            "encounterRef": "chain.permits-and-filters/levy",
+            "outcome": "victory"
+          }
+        ]
+      },
+      "storedChoices": [
+        {
+          "id": "delivered",
+          "label": "Unload the three filters.",
+          "kind": "CompleteSnippet",
+          "narrative": "The filters are unloaded. Seli pays 20 credits and signs the delivery receipt.",
+          "outcome": "delivered"
+        },
+        {
+          "id": "ask-self",
+          "label": "Who are you?",
+          "kind": "LocalDialogue",
+          "narrative": "“Seli. I keep the clinic’s air, power, and patience from failing in that order.”"
+        },
+        {
+          "id": "ask-place",
+          "label": "How bad is it here?",
+          "kind": "LocalDialogue",
+          "narrative": "“Glasswake is a clinic first and a station second. Everything else is whatever we can keep patched.”"
+        }
+      ],
+      "secrets": "The clinic is closer to a ventilation shutdown than Seli admits. Delivery requires three actual filters; no payment precedes their transfer.",
+      "speakerRef": "contact.engineer-seli",
+      "outcomeEffects": {
+        "delivered": [
+          {
+            "kind": "ChangeCargo",
+            "cargoRef": "cargo.filters",
+            "delta": -3
+          },
+          {
+            "kind": "ChangeCredits",
+            "delta": 20
+          }
+        ]
+      },
+      "mission": {
+        "missionRef": "chain.permits-and-filters",
+        "onOutcome": {
+          "delivered": {
+            "operation": "append",
+            "text": "The filters are unloaded. Seli pays 20 credits and signs the delivery receipt."
+          }
+        }
+      }
+    },
+    {
+      "id": "chain.permits-and-filters/scene.report",
+      "kind": "ConversationNode",
+      "location": "loc.blackrock",
+      "narrative": "Venn raises the stamp. \"Receipt received. One citation ready to close. There is something odd in the sector shipping records, if you are interested later.\"",
+      "outcomes": [
+        "filed"
+      ],
+      "prerequisite": {
+        "kind": "StoryOutcome",
+        "outcome": "delivered",
+        "snippetRef": "chain.permits-and-filters/scene.clinic"
+      },
+      "storedChoices": [
+        {
+          "id": "filed",
+          "label": "File Seli's receipt.",
+          "kind": "CompleteSnippet",
+          "narrative": "Venn stamps the maintenance permit and pays the 15-credit transport subsidy.",
+          "outcome": "filed"
+        },
+        {
+          "id": "ask-next",
+          "label": "What was odd in the shipping records?",
+          "kind": "LocalDialogue",
+          "narrative": "“Enough to be interesting, not enough to make this your problem unless you want another job later.”"
+        }
+      ],
+      "secrets": "The maintenance permit is legitimate. Venn has noticed suspicious filter orders routed toward a stranded gate; that is a possible future independent job.",
+      "speakerRef": "contact.officer-venn",
+      "outcomeEffects": {
+        "filed": [
+          {
+            "kind": "ChangeCredits",
+            "delta": 15
+          }
+        ]
+      },
+      "mission": {
+        "missionRef": "chain.permits-and-filters",
+        "onOutcome": {
+          "filed": {
+            "operation": "complete",
+            "text": "Delivered the filters and secured Freeport's maintenance permit."
+          }
+        }
+      }
+    },
+    {
+      "id": "chain.permits-and-filters/scene.trouble",
+      "kind": "ConversationNode",
+      "location": "loc.freeport",
+      "narrative": "Your parent sighs over the comm. \"We can work this out. Preferably before we have to come get you again.\" The delivery can be continued later or closed for now.",
+      "outcomes": [
+        "closed"
+      ],
+      "prerequisite": {
+        "kind": "Any",
+        "conditions": [
+          {
+            "kind": "EncounterOutcome",
+            "encounterRef": "chain.permits-and-filters/levy",
+            "outcome": "escaped"
+          },
+          {
+            "kind": "EncounterOutcome",
+            "encounterRef": "chain.permits-and-filters/levy",
+            "outcome": "defeated"
+          }
+        ]
+      },
+      "storedChoices": [
+        {
+          "id": "closed",
+          "label": "Leave the filters with the relief office.",
+          "kind": "CompleteSnippet",
+          "narrative": "Your parent takes custody of the filters for another courier. No delivery payment is claimed.",
+          "outcome": "closed"
+        },
+        {
+          "id": "ask-options",
+          "label": "What are my options?",
+          "kind": "LocalDialogue",
+          "narrative": "“Repair, reroute, negotiate, or walk away. Just do one of them on purpose.”"
+        }
+      ],
+      "secrets": "Recovery has already applied any defeat penalty. Do not repeat it. The filters remain owned until transferred to the relief office.",
+      "speakerRef": "contact.freeport-parent",
+      "outcomeEffects": {
+        "closed": [
+          {
+            "kind": "ChangeCargo",
+            "cargoRef": "cargo.filters",
+            "delta": -3
+          }
+        ]
+      },
+      "mission": {
+        "missionRef": "chain.permits-and-filters",
+        "onOutcome": {
+          "closed": {
+            "operation": "complete",
+            "text": "Family relief workers will arrange the remaining delivery."
+          }
+        }
+      }
+    },
+    {
+      "id": "chain.good-company/offer",
+      "kind": "ConversationNode",
+      "narrative": "A surveyor needs a berth. Her sister offers to fly escort in Good Company.",
+      "outcomes": [
+        "accepted",
+        "declined"
+      ],
+      "storedChoices": [
+        {
+          "id": "accept",
+          "kind": "CompleteSnippet",
+          "label": "Accept: Good company",
+          "outcome": "accepted"
+        },
+        {
+          "id": "decline",
+          "kind": "CompleteSnippet",
+          "label": "Decline",
+          "outcome": "declined"
+        }
+      ],
+      "mission": {
+        "missionRef": "chain.good-company",
+        "onOutcome": {
+          "accepted": {
+            "operation": "create",
+            "title": "Good company",
+            "text": "A surveyor needs a berth. Her sister offers to fly escort in Good Company."
+          }
+        }
+      },
+      "speakerRef": "contact.ori",
+      "outcomeEffects": {
+        "accepted": [
+          {
+            "kind": "CreateContact",
+            "contactRef": "contact.ori"
+          }
+        ]
+      }
+    },
+    {
+      "id": "chain.good-company/scene.recruit",
+      "kind": "ConversationNode",
+      "location": "loc.freeport",
+      "narrative": "Ori taps the atlas. \"One crew berth for me. My sister brings her own tender. We will accompany you on local journeys and help in a fight.\"",
+      "outcomes": [
+        "joined"
+      ],
+      "prerequisite": {
+        "kind": "StoryOutcome",
+        "snippetRef": "chain.good-company/offer",
+        "outcome": "accepted"
+      },
+      "storedChoices": [
+        {
+          "id": "join",
+          "label": "Welcome aboard.",
+          "kind": "CompleteSnippet",
+          "narrative": "Ori joins your crew; Good Company will accompany your ship.",
+          "outcome": "joined"
+        }
+      ],
+      "speakerRef": "contact.ori",
+      "outcomeEffects": {
+        "joined": [
+          {
+            "kind": "RecruitCrew",
+            "contactRef": "contact.ori"
+          },
+          {
+            "kind": "CreateShip",
+            "shipId": "ship-instance.good-company",
+            "name": "Good Company",
+            "shipCardRef": "ship.mender-tender",
+            "factionRef": "faction.scrap-pirates",
+            "systemRef": "2345674564567"
+          },
+          {
+            "kind": "RecruitAlly",
+            "shipRef": "ship-instance.good-company"
+          }
+        ]
+      },
+      "mission": {
+        "missionRef": "chain.good-company",
+        "onOutcome": {
+          "joined": {
+            "operation": "complete",
+            "text": "Ori joined the crew. Good Company now flies escort."
+          }
+        }
+      }
+    }
+  ],
+  "cargoDefinitions": [
+    {
+      "id": "cargo.filters",
+      "name": "Sealed condenser filter",
+      "unitsPerItem": 1,
+      "questOnly": true
+    }
+  ],
+  "contacts": [
+    {
+      "id": "contact.freeport-parent",
+      "name": "Freeport Parent",
+      "factionRef": "faction.scrap-pirates",
+      "locationRef": "loc.freeport",
+      "role": "Family dockmaster and recovery contact",
+      "appearanceBrief": "A practical Freeport dockworker-parent in patched station gear, surrounded by tools and half-finished repairs.",
+      "secretInfo": "Keep the captain alive, solvent, and only moderately embarrassed."
+    },
+    {
+      "id": "contact.officer-venn",
+      "name": "Officer Venn",
+      "factionRef": "faction.empire",
+      "locationRef": "loc.blackrock",
+      "role": "Port compliance officer",
+      "appearanceBrief": "A tired Imperial port officer in a soot-marked uniform, carrying too many stamped forms.",
+      "secretInfo": "Resolve local compliance problems without creating more paperwork than necessary."
+    },
+    {
+      "id": "contact.engineer-seli",
+      "name": "Engineer Seli",
+      "factionRef": "faction.menders",
+      "locationRef": "loc.glasswake",
+      "role": "Clinic systems engineer",
+      "appearanceBrief": "A grease-streaked clinic engineer with improvised respirator clips and a tablet full of maintenance alarms.",
+      "secretInfo": "Keep Glasswake Clinic operating with scarce parts and minimal drama."
+    },
+    {
+      "id": "contact.second-notice-clerk",
+      "name": "Second Notice Clerk",
+      "factionRef": "faction.ash-levy",
+      "systemRef": "2345674564561",
+      "shipCardRef": "ship.ash-cutter",
+      "role": "Protection-racket inspector",
+      "appearanceBrief": "A severe clerk framed by a battered cutter bridge and a suspiciously official-looking inspection placard.",
+      "secretInfo": "Pressure traffic into surrendering cargo under a bureaucratic pretext."
+    },
+    {
+      "id": "contact.ori",
+      "name": "Ori Vale",
+      "factionRef": "faction.scrap-pirates",
+      "locationRef": "loc.freeport",
+      "role": "Navigator",
+      "appearanceBrief": "A young surveyor in an oversized flight jacket, carrying a hand-marked atlas.",
+      "secretInfo": "Ori hopes to map a safe route for civilian convoys."
+    }
+  ],
+  "entryContacts": [
+    "contact.freeport-parent",
+    "contact.ori"
+  ]
+}

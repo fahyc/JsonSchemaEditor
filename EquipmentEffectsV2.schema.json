@@ -24,7 +24,7 @@
         },
         {
           "type": "object",
-          "description": "Additional critical die face. Repeat for multiple faces.",
+          "description": "Increases crit odds by adding an additional critical die face shipwide. Repeat for multiple faces.",
           "properties": {
             "kind": {
               "const": "CriticalFaces"
@@ -190,7 +190,7 @@
         },
         {
           "type": "object",
-          "description": "This weapon ignores shields.",
+          "description": "This weapon ignores shields. Use sparingly.",
           "properties": {
             "kind": {
               "const": "IgnoreShields"
@@ -203,7 +203,7 @@
         },
         {
           "type": "object",
-          "description": "Dodge charges granted at round start while powered.",
+          "description": "Dodge charges granted at round start while powered. Good for thruster systems.",
           "properties": {
             "kind": {
               "const": "Dodge"
@@ -213,44 +213,6 @@
               "minimum": 1,
               "maximum": 100,
               "default": 2
-            }
-          },
-          "required": [
-            "kind"
-          ],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "description": "Dodge charges granted when this system is activated.",
-          "properties": {
-            "kind": {
-              "const": "DodgeOnActivation"
-            },
-            "value": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 2
-            }
-          },
-          "required": [
-            "kind"
-          ],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "description": "Fuel amount generated on a successful round-start roll, in equipment affinity. Green/Red: d6 on 4-6; Blue: d8 on 5-8; Yellow: d4 on 2. Generally 1.",
-          "properties": {
-            "kind": {
-              "const": "GenerateFuel"
-            },
-            "value": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 5,
-              "default": 1
             }
           },
           "required": [
@@ -419,7 +381,7 @@
         },
         {
           "type": "object",
-          "description": "This weapon ignores dodge.",
+          "description": "This weapon ignores dodge abilities. Use sparingly. ",
           "properties": {
             "kind": {
               "const": "IgnoreDodge"
@@ -489,7 +451,7 @@
         },
         {
           "type": "object",
-          "description": "Allow tunnelling while connected and functional.",
+          "description": "Allow tunnelling (travel between numerically similar star systems) while connected and functional.",
           "properties": {
             "kind": {
               "const": "EnableTunnelling"
@@ -502,7 +464,7 @@
         },
         {
           "type": "object",
-          "description": "Additional cargo units while connected and functional.",
+          "description": "Additional cargo units while connected and functional. Reasonable range: 5-50",
           "properties": {
             "kind": {
               "const": "CargoCapacity"
@@ -521,7 +483,7 @@
         },
         {
           "type": "object",
-          "description": "Additional passenger berths while connected and functional.",
+          "description": "Additional passenger berths while connected and functional. Reasonable range: 1-10",
           "properties": {
             "kind": {
               "const": "PassengerBerths"
@@ -540,7 +502,7 @@
         },
         {
           "type": "object",
-          "description": "Additional concealed cargo units while connected and functional.",
+          "description": "Additional concealed cargo units while connected and functional - for smuggling. Reasonable range: 1-10. ",
           "properties": {
             "kind": {
               "const": "ConcealedCargo"
