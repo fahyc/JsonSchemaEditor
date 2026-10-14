@@ -29,15 +29,19 @@ test('region validates enums, cross-file refs, numeric constants, array lengths 
   equipment.effects[0].value=99;assert.ok(check(region,reg[region],value).length);equipment.effects[0].value=2;
   value.systems[0].address='8';assert.ok(check(region,reg[region],value).some(e=>e.message.includes('match')));
 });
-test('mission conditionals require title only on create and speaker only for dialogue',()=>{
-  const s=def('MissionJournalEvent');assert.deepEqual(check(mission,s,{operation:'create',title:'Start',text:'Begin'}),[]);
-  assert.ok(check(mission,s,{operation:'create',text:'Begin'}).length);
-  assert.deepEqual(check(mission,s,{operation:'append',text:'Continue'}),[]);
-  assert.ok(check(mission,s,{operation:'append',title:'No',text:'Continue'}).length);
-  assert.ok(C.effective(reg,mission,s,{operation:'create',text:'x'}).schema.required.includes('title'));
-  const snippet={id:'s1',kind:'MissionNode',narrative:'An event',outcomes:['done']};assert.deepEqual(check(mission,def('StorySnippet'),snippet),[]);
-  snippet.kind='ConversationNode';assert.ok(check(mission,def('StorySnippet'),snippet).some(e=>e.path==='/speakerRef'));
+test('mission sample omits conditional rules and keeps title and speaker optional',()=>{
+  const s=def('MissionJournalEvent');
+  for(const operation of ['create','append']){
+    assert.deepEqual(check(mission,s,{operation,text:'Begin'}),[]);
+    assert.deepEqual(check(mission,s,{operation,title:'Start',text:'Begin'}),[]);
+  }
+  for(const kind of ['MissionNode','ConversationNode']){
+    assert.deepEqual(check(mission,def('StorySnippet'),{id:'s1',kind,narrative:'An event',outcomes:['done']}),[]);
+  }
+  const walk=v=>{if(!v||typeof v!=='object')return;for(const [k,x] of Object.entries(v)){assert.ok(!['allOf','if','then','else'].includes(k),k);walk(x);}};
+  for(const schema of Object.values(reg))walk(schema);
 });
+
 test('schema-defined dictionaries reject empty keys and validate nested values',()=>{
   const s=def('MissionJournalBinding');const v={missionRef:'m1',onOutcome:{done:{operation:'complete',text:'Finished'}}};assert.deepEqual(check(mission,s,v),[]);
   v.onOutcome['']={operation:'complete',text:'x'};assert.ok(check(mission,s,v).some(e=>e.message.includes('length')));

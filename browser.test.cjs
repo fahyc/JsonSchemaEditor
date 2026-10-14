@@ -32,7 +32,7 @@ const path=require('node:path');
   await page.locator('#type-search').fill('Recursive');await page.locator('#type-results .picker-item').click();await page.locator('#close-editor').click();
   assert.equal(await page.locator('.node').count(),1);assert.match(await page.locator('#counts').innerText(),/1 links/);
   await page.locator('#json-view').click();const schema=JSON.parse(await page.locator('#json-edit').inputValue());assert.equal(schema.properties.child.$ref,'#');await page.locator('#json-cancel').click();
-  // Real-file import, ID search across files, dictionaries, and conditional fields.
+  // Real-file import, ID search across files, dictionaries, and optional journal fields.
   const importFile=async(name,value,schema)=>{await page.locator('#data-files').setInputFiles({name,mimeType:'application/json',buffer:Buffer.from(JSON.stringify(value))});await page.locator('#import-data-schema').selectOption(schema);await page.locator('#finish-data-import').click();};
   await importFile('region-data.json',{id:'r1',schemaVersion:5,topologyVersion:'base7-damage-loop-v3',systems:[{address:'123',description:'Home'}],locations:[{id:'port-1',name:'Anchor Port',systemRef:'123',kind:'Station',description:'A port'}]},'RegionResponseV5.schema.json');
   await importFile('mission-data.json',{schemaVersion:8,locationRef:'',contacts:[{id:'contact-1',name:'Captain Reed',role:'Captain',appearanceBrief:'Weathered'}],entryContacts:[''],storySnippets:[{id:'story-1',kind:'MissionNode',narrative:'Arrive',outcomes:['done'],mission:{missionRef:'m1',onOutcome:{}}}]},'MissionArrivalResponseV8.schema.json');
@@ -46,7 +46,7 @@ const path=require('node:path');
   await page.locator('#search').fill('/onOutcome');await page.locator('.node').filter({hasText:'onOutcome'}).first().focus();await page.locator('.node').filter({hasText:'onOutcome'}).first().click();
   await page.locator('#add-entry').click();await page.locator('#new-name').fill('done');await page.locator('#name-create').click();
   await page.locator('.child-button').click();
-  // Default operation=create makes title conditionally required.
+  // Add the optional title for a create journal event.
   await page.locator('.data-row').filter({has:page.locator('.data-label',{hasText:'title'})}).locator('.add-value').click();
   await page.getByRole('textbox',{name:'title',exact:true}).fill('Docking');await page.getByRole('textbox',{name:'title',exact:true}).press('Tab');
   await page.getByRole('textbox',{name:'text',exact:true}).fill('Reach the port');await page.getByRole('textbox',{name:'text',exact:true}).press('Tab');

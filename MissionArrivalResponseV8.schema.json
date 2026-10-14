@@ -751,33 +751,7 @@
           "minLength": 1,
           "description": "Only player-facing journal body field. On create, initial mission description/objective; on overwrite, complete replacement body; on append, a new paragraph; on complete, closing paragraph explaining the resolution."
         }
-      },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "operation": {
-                "const": "create"
-              }
-            },
-            "required": [
-              "operation"
-            ]
-          },
-          "then": {
-            "required": [
-              "title"
-            ]
-          },
-          "else": {
-            "not": {
-              "required": [
-                "title"
-              ]
-            }
-          }
-        }
-      ]
+      }
     },
     "MissionJournalBinding": {
       "type": "object",
@@ -891,26 +865,7 @@
           "$ref": "#/$defs/MissionJournalBinding",
           "description": "Optional outcome-based mission log updates; not world-entity AddLog history. Can appear on either snippet kind."
         }
-      },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "kind": {
-                "const": "ConversationNode"
-              }
-            },
-            "required": [
-              "kind"
-            ]
-          },
-          "then": {
-            "required": [
-              "speakerRef"
-            ]
-          }
-        }
-      ]
+      }
     },
     "GrantGatePasswordFunction": {
       "type": "object",

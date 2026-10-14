@@ -58,9 +58,19 @@ node --test layout.test.cjs
 node --test editing.test.cjs
 ```
 
-For browser integration tests, install Playwright in your development environment and run `node browser.test.cjs`. The test uses a headless installed Microsoft Edge, isolated from your normal browser profile. Set `PLAYWRIGHT_MODULE` to a package directory if Playwright is installed outside this project. It exercises startup from disk, schema editing/undo, canonical self-links, data variants, import/export, persistence, cross-file ID search, array references, dictionaries, conditionals, and escaping imported text. It generates `preview.png`.
+For browser integration tests, install Playwright in your development environment and run `node browser.test.cjs`. The test uses a headless installed Microsoft Edge, isolated from your normal browser profile. Set `PLAYWRIGHT_MODULE` to a package directory if Playwright is installed outside this project. It exercises startup from disk, schema editing/undo, canonical self-links, data variants, import/export, persistence, cross-file ID search, array references, dictionaries, optional journal fields, and escaping imported text. It generates `preview.png`.
 
 The production application uses no Playwright or Node dependency.
+
+## AI data generation
+
+Click **Generate with AI**, enter an OpenAI API key and a model ID that supports the Responses API with JSON mode, choose the required schema, select any open reference data files, and enter your prompt. **Preview outgoing prompt** shows exactly what content will be sent: checked JSON data files (without their schemas), the target schema and its transitive dependencies, then your prompt. Missing schema references stop the request before it is sent.
+
+Generation uses the OpenAI Responses API with `store: false` and JSON mode. It does not restrict your game schemas to OpenAI's strict Structured Outputs subset. Returned data is validated using the editor's existing validator and its documented supported keywords. Valid data becomes a new editable data file; use **Export** to download it. Invalid results show validation errors and may be opened explicitly as drafts. Regeneration requires another click and may incur another API charge. Cancel stops waiting for the request; it may not stop work or billing already underway at the provider.
+
+The API key stays in page memory, is sent only in the authorization header, and is never saved in workspace storage or included in the prompt. Reloading clears it. This static prototype calls OpenAI directly from the browser and requires internet access; shared production deployments should keep credentials behind a backend. Model availability, permissions, rate limits, and browser/network restrictions may cause requests to fail; errors appear in the generation screen. Settings and selected context persist only while the page stays open.
+
+Run `node --test ai.test.cjs` for prompt ordering, dependency resolution, transport, and failure handling. Run `node ai-browser.test.cjs` using the Playwright setup above for mocked generation, validation, draft editing, context selection, and credential-storage isolation. No real API key is used by these tests. The browser test writes `ai-preview.png`.
 
 `node navigation.test.cjs` checks pointer-centered zoom, drag/click separation, editor scrolling, Fit/reset, and keyboard focus. It uses the same Playwright setup and generates layout screenshots.
 
