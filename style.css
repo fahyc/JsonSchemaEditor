@@ -9,6 +9,8 @@
 
 .node-delete{margin-left:4px;flex-shrink:0;width:23px;height:23px;padding:0;border:0;background:transparent;color:var(--muted);font-size:19px;line-height:20px;border-radius:4px}
 .node-delete:hover{background:#58382f;color:var(--danger)}
+.node-promote{margin-left:6px;flex-shrink:0;width:23px;height:23px;padding:0;border:0;background:transparent;color:var(--muted);font-size:13px;line-height:22px;border-radius:4px}
+.node-promote:hover{background:#2f4758;color:var(--blue)}
 .node-name{flex:1;min-width:0}.node-kind{flex-shrink:0}
 .enum-row{display:grid;grid-template-columns:115px minmax(140px,1fr) 35px 35px;gap:8px;margin-bottom:10px}.enum-row input,.enum-row select{width:100%}.enum-row button{padding:6px}
 .delete-locations{max-height:260px;overflow:auto;font-size:12px;line-height:1.8;overflow-wrap:anywhere}.delete-reference{display:flex!important;align-items:flex-start;gap:10px;padding:8px;border-bottom:1px solid var(--line)}.delete-reference small{display:block}.delete-reference input{flex-shrink:0}
