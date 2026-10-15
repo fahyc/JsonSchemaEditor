@@ -58,14 +58,14 @@ function drawGraph(){
   const previousLayout=graphLayout;
   $('#nodes').innerHTML=nodes.map((n,i)=>{const isData=state.mode==='data',s=n.schema||{};const fields=isData?Object.entries(n.value):Object.entries(s.properties||{});const union=s.oneOf||s.anyOf;
     const rows=fields.slice(0,5).map(([k,v])=>`<div class="node-field"><span>${h(k)}${!isData&&s.required?.includes(k)?'<b class="required"> *</b>':''}</span><span>${h(isData?(v&&typeof v==='object'?(Array.isArray(v)?'['+v.length+']':'object →'):JSON.stringify(v)):typeLabel(v))}</span></div>`).join('');
-    return `<div class="node ${n.path===''?'node-root':''}" data-node="${i}" role="button" tabindex="0" aria-label="Edit ${h(n.name)}"><div class="node-head"><span class="node-icon">${isData?'▧':union?'⑂':'◇'}</span><span class="node-name">${h(n.name)}</span><span class="node-kind">${isData?'instance':union?'union':n.path===''?'root':'object'}</span><button class="node-delete" aria-label="Delete ${h(n.name)}" title="Delete node">×</button></div><div class="node-fields">${rows||`<p class="hint">${union?union.length+' selectable variants':s.type==='array'?'Array of '+h(typeLabel(s.items)):'No fields yet'}</p>`}${fields.length>5?'<div class="hint">+ '+(fields.length-5)+' more fields</div>':''}</div><div class="node-meta">${isData?h(n.path||'/'):h(n.doc===state.activeSchema?'Click to edit type':'↗ '+n.doc)}</div></div>`;
+    return `<div class="node ${n.path===''?'node-root':''}" data-node="${i}" role="button" tabindex="0" aria-label="Edit ${h(n.name)}"><div class="node-head"><span class="node-icon">${isData?'▧':union?'⑂':'◇'}</span><span class="node-name">${h(n.name)}</span><span class="node-kind">${isData?'instance':union?'union':n.path===''?'root':'object'}</span><button class="node-promote" aria-label="Promote ${h(n.name)}" title="Promote node">⇧</button><button class="node-delete" aria-label="Delete ${h(n.name)}" title="Delete node">×</button></div><div class="node-fields">${rows||`<p class="hint">${union?union.length+' selectable variants':s.type==='array'?'Array of '+h(typeLabel(s.items)):'No fields yet'}</p>`}${fields.length>5?'<div class="hint">+ '+(fields.length-5)+' more fields</div>':''}</div><div class="node-meta">${isData?h(n.path||'/'):h(n.doc===state.activeSchema?'Click to edit type':'↗ '+n.doc)}</div></div>`;
   }).join('');
   const heights=new Map($$('#nodes .node').map(b=>[nodes[+b.dataset.node].key,b.offsetHeight]));
   graphLayout=GraphLayout.layoutFamilies(nodes,edges,{heights});
   const {positions,width,height}=graphLayout;
   $('#graph').style.width=width+'px';$('#graph').style.height=height+'px';
   $$('#nodes .node').forEach(b=>{const p=positions.get(nodes[+b.dataset.node].key);b.style.left=p.x+'px';b.style.top=p.y+'px';});
-  $$('#nodes .node').forEach(b=>{const n=nodes[+b.dataset.node];b.onclick=()=>state.mode==='schema'?openSchema(n):openData(n.path);b.onkeydown=e=>{if(e.target===b&&(e.key==='Enter'||e.key===' ')){e.preventDefault();b.click();}};b.querySelector('.node-delete').onclick=e=>{e.stopPropagation();deleteNode(n);};});
+  $$('#nodes .node').forEach(b=>{const n=nodes[+b.dataset.node];b.onclick=()=>state.mode==='schema'?openSchema(n):openData(n.path);b.onkeydown=e=>{if(e.target===b&&(e.key==='Enter'||e.key===' ')){e.preventDefault();b.click();}};b.querySelector('.node-promote').onclick=e=>{e.stopPropagation();promoteNode(n);};b.querySelector('.node-delete').onclick=e=>{e.stopPropagation();deleteNode(n);};});
   const svg=$('#edges');svg.setAttribute('width',width);svg.setAttribute('height',height);
   svg.innerHTML='<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#607f90"/></marker></defs>'+edges.map((e,i)=>{const a=positions.get(e.from),b=positions.get(e.to);let d;const sx=a.x+a.width,sy=a.y+a.height/2,tx=b.x,ty=b.y+b.height/2;
     if(e.from===e.to)d=`M ${sx} ${sy} C ${sx+65} ${sy}, ${sx+65} ${a.y-28}, ${a.x+a.width/2} ${a.y-28} L ${a.x+a.width/2} ${a.y-2}`;
@@ -115,6 +115,39 @@ canvas.addEventListener('click',event=>{if(suppressGraphClick&&event.detail!==0)
 // Keyboard users can always bring a tab-focused node into the visible viewport.
 canvas.addEventListener('focusin',event=>{const node=event.target.closest('.node');if(pan||!node)return;const rect=node.getBoundingClientRect(),bounds=canvas.getBoundingClientRect();if(rect.right<bounds.left||rect.left>bounds.right||rect.bottom<bounds.top||rect.top>bounds.bottom){camera.x+=bounds.left+bounds.width/2-rect.left-rect.width/2;camera.y+=bounds.top+bounds.height/2-rect.top-rect.height/2;applyCamera();}});
 function deleteNode(node){if(state.mode==='schema')deleteSchemaNode(node);else deleteDataNode(node);}
+function safeName(name,fallback){const out=String(name||fallback).replace(/\.[A-Za-z0-9]+$/,'').replace(/[^\w.-]+/g,' ').trim().replace(/\s+/g,'-');return out||fallback;}
+function uniqueSchemaFilename(base){
+  const stem=safeName(base,'promoted-schema');let i=1,name=stem+'.schema.json';
+  while(C.own(state.schemas,name)){i++;name=stem+'-'+i+'.schema.json';}
+  return name;
+}
+function uniqueDataFilename(base){
+  const stem=safeName(base,'promoted-data');let i=1,name=stem+'.json';
+  while(state.data.some(d=>d.name===name)){i++;name=stem+'-'+i+'.json';}
+  return name;
+}
+function promoteNode(node){if(state.mode==='schema')promoteSchemaNode(node);else promoteDataNode(node);}
+function promoteSchemaNode(node){
+  try{
+    const name=uniqueSchemaFilename(node.name),promoted=C.promoteSchema(state.schemas,node.doc,node.path);
+    change(()=>{Object.defineProperty(state.schemas,name,{value:promoted,enumerable:true,writable:true,configurable:true});state.activeSchema=name;state.mode='schema';});
+    selection={mode:'schema',doc:name,path:''};notify('Promoted schema created: '+name);
+  }catch(e){notify('Promote failed: '+e.message);}
+}
+function promoteDataNode(node){
+  const d=activeData();if(!d)return;
+  const mapped=C.schemaForDataPath(state.schemas,d.schema,state.schemas[d.schema],d.value,node.path);
+  if(!mapped||mapped.schema===false){alert('Cannot promote this data node because no matching schema could be determined.');return;}
+  try{
+    const schemaName=uniqueSchemaFilename(node.name),schema=C.promoteSchema(state.schemas,mapped.doc,mapped.path??mapped.schema),value=C.clone(node.value),dataName=uniqueDataFilename((d.name||'data').replace(/\.json$/i,'')+'-'+safeName(node.name,'node'));
+    change(()=>{
+      Object.defineProperty(state.schemas,schemaName,{value:schema,enumerable:true,writable:true,configurable:true});
+      const next={id:cryptoId(),name:dataName,schema:schemaName,value};
+      state.data.push(next);state.activeData=next.id;state.activeSchema=schemaName;state.mode='data';
+    });
+    selection={mode:'data',path:''};notify('Promoted data created: '+dataName);
+  }catch(e){notify('Promote failed: '+e.message);}
+}
 function deleteSchemaNode(node,after){
   const plan=E.planSchemaDelete(state.schemas,node.doc,node.path),count=plan.references.length+plan.containment;
   const affected=plan.removedPaths.map(p=>p.doc+'#'+p.path);

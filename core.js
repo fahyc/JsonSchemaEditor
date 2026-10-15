@@ -125,7 +125,60 @@
       Object.entries(v).forEach(([k,child])=>walk(eff.doc,Array.isArray(v)?eff.schema.items||{}:eff.schema.properties?.[k]||eff.schema.additionalProperties||{},child,p+'/'+esc(k),p,k));
     }walk(doc,schema,value,'',null,'Root');return {nodes,edges};
   }
-  const api={own,clone,esc,unesc,at,put,remove,equal,typeOf,isType,resolve,validate,deref,effective,seed,index,dataNodes,variantIndex};
+  function schemaPath(root,target) {
+    let found;
+    const walk=(v,path)=>{
+      if(found!==undefined||!v||typeof v!=='object')return;
+      if(v===target){found=path;return;}
+      for(const key of ['properties','$defs','definitions','patternProperties'])for(const [k,x]of Object.entries(v[key]||{}))walk(x,path+'/'+key+'/'+esc(k));
+      for(const key of ['oneOf','anyOf','allOf','prefixItems'])for(const [i,x]of (v[key]||[]).entries())walk(x,path+'/'+key+'/'+i);
+      for(const key of ['items','additionalProperties','if','then','else','not','propertyNames','contains'])if(typeof v[key]==='object')walk(v[key],path+'/'+key);
+    };
+    walk(root,'');
+    return found;
+  }
+  function schemaForDataPath(reg,doc,schema,value,path='') {
+    const parts=path.split('/').slice(1).map(unesc);
+    let currentDoc=doc,currentSchema=schema,currentValue=value;
+    for(const part of parts){
+      if(!currentValue||typeof currentValue!=='object')return null;
+      let eff;try{eff=effective(reg,currentDoc,currentSchema,currentValue);}catch{return null;}
+      const child=Array.isArray(currentValue)?(eff.schema.prefixItems?.[+part]??eff.schema.items):(eff.schema.properties?.[part]??eff.schema.additionalProperties);
+      if(child===undefined||child===false)return null;
+      currentDoc=eff.doc;currentSchema=child;currentValue=currentValue[part];
+    }
+    const root=reg[currentDoc];
+    return {doc:currentDoc,schema:currentSchema,value:currentValue,path:root?schemaPath(root,currentSchema):undefined};
+  }
+  function rewritePromotedRefs(reg,sourceDoc,prefix,out) {
+    const walk=v=>{
+      if(!v||typeof v!=='object')return;
+      if(typeof v.$ref==='string') {
+        try{
+          const r=resolve(reg,sourceDoc,v.$ref), inside=r.doc===sourceDoc&&(r.path===prefix||r.path.startsWith(prefix+'/'));
+          if(inside)v.$ref='#'+r.path.slice(prefix.length);
+          else if(r.doc===sourceDoc&&prefix==='')v.$ref='#'+r.path;
+          else v.$ref=r.doc+'#'+r.path;
+        }catch{}
+      }
+      for(const key of ['properties','$defs','definitions','patternProperties'])Object.values(v[key]||{}).forEach(walk);
+      for(const key of ['oneOf','anyOf','allOf','prefixItems'])(v[key]||[]).forEach(walk);
+      for(const key of ['items','additionalProperties','if','then','else','not','propertyNames','contains'])if(typeof v[key]==='object')walk(v[key]);
+    };
+    walk(out);
+  }
+  function promoteSchema(reg,doc,pathOrSchema) {
+    const byPath=typeof pathOrSchema==='string',prefix=byPath?pathOrSchema:'';
+    const source=byPath?at(reg[doc],pathOrSchema):pathOrSchema;
+    if(source===undefined)throw Error('Schema path not found: '+pathOrSchema);
+    const out=clone(source);
+    rewritePromotedRefs(reg,doc,prefix,out);
+    if(out&&typeof out==='object'){
+      if(byPath&&pathOrSchema&&reg[doc]?.$schema&&!own(out,'$schema'))out.$schema=reg[doc].$schema;
+      if(reg[doc]?.$id&&out.$id===reg[doc].$id)delete out.$id;
+    }
+    return out;
+  }
+  const api={own,clone,esc,unesc,at,put,remove,equal,typeOf,isType,resolve,validate,deref,effective,seed,index,dataNodes,variantIndex,schemaPath,schemaForDataPath,promoteSchema};
   if(typeof module!=='undefined')module.exports=api;root.SchemaCore=api;
 })(typeof window!=='undefined'?window:globalThis);
-
