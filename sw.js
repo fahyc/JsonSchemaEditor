@@ -1,6 +1,6 @@
 /* Version the shell as a unit. User files and OpenAI traffic are never cached. */
-const CACHE='schema-dock-shell-v2026-10-17-2';
-const SHELL=['./','index.html','style.css','boot.js','core.js','editing.js','layout.js','documents.js','graph-ui.js','json-editor.js','app.js','file-ui.js','pwa.js','ai.js','ai-ui.js','manifest.webmanifest','icons/icon.svg','icons/icon-192.png','icons/icon-512.png'];
+const CACHE='schema-dock-shell-v2026-10-18-1';
+const SHELL=['./','index.html','style.css','boot.js','core.js','editing.js','layout.js','documents.js','example-migration.js','graph-ui.js','json-editor.js','app.js','file-ui.js','pwa.js','ai.js','ai-ui.js','manifest.webmanifest','icons/icon.svg','icons/icon-192.png','icons/icon-512.png'];
 const urls=new Set(SHELL.map(p=>new URL(p,self.registration.scope).href));
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL))));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const key of await caches.keys())if(key.startsWith('schema-dock-shell-')&&key!==CACHE)await caches.delete(key);await self.clients.claim();})()));

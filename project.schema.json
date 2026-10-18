@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema-dock.example/schemas/project.schema.json",
+  "title": "Project",
+  "description": "A project plan demonstrating external schema dependencies, reusable objects, enums, and dictionaries.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "people", "tasks"],
+  "properties": {
+    "$schema": {"type": "string", "const": "project.schema.json"},
+    "name": {"type": "string", "minLength": 1},
+    "description": {"type": "string"},
+    "ownerRef": {"type": "string", "description": "ID of a person responsible for this project."},
+    "people": {"type": "array", "items": {"$ref": "person.schema.json"}},
+    "tasks": {"type": "array", "items": {"$ref": "task.schema.json"}},
+    "labels": {"type": "object", "description": "Arbitrary label names mapped to text values.", "additionalProperties": {"type": "string"}}
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema-dock.example/schemas/task.schema.json",
+  "title": "Task",
+  "description": "A task with selectable status, a due-date variant, and optional subtasks.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "title", "status"],
+  "properties": {
+    "$schema": {"type": "string", "const": "task.schema.json"},
+    "id": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "description": {"type": "string"},
+    "status": {"type": "string", "enum": ["planned", "in-progress", "done"]},
+    "priority": {"type": "integer", "enum": [1, 2, 3], "description": "1 is highest priority."},
+    "assigneeRef": {"type": "string", "description": "ID of a person in this project. Reference search inserts the ID without copying the person."},
+    "due": {
+      "description": "Choose a calendar date or an explicit no-deadline variant.",
+      "oneOf": [
+        {"title": "Calendar date", "type": "object", "additionalProperties": false, "required": ["kind", "date"], "properties": {"kind": {"const": "date"}, "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}}},
+        {"title": "No deadline", "type": "object", "additionalProperties": false, "required": ["kind"], "properties": {"kind": {"const": "none"}}}
+      ]
+    },
+    "subtasks": {"type": "array", "description": "Each subtask uses the same canonical Task type.", "items": {"$ref": "#"}},
+    "tags": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+  }
+}

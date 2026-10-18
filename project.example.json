@@ -1,0 +1,15 @@
+{
+  "$schema": "project.schema.json",
+  "name": "Community workshop",
+  "description": "Plan a small workshop and share responsibility for its preparations.",
+  "ownerRef": "alex",
+  "people": [
+    {"id": "alex", "name": "Alex Morgan", "role": "coordinator", "preferences": {"contact": "email"}},
+    {"id": "sam", "name": "Sam Lee", "role": "contributor", "preferences": {"availability": "afternoons"}}
+  ],
+  "tasks": [
+    {"id": "venue", "title": "Confirm the venue", "status": "done", "priority": 1, "assigneeRef": "alex", "due": {"kind": "date", "date": "2026-11-02"}},
+    {"id": "materials", "title": "Prepare workshop materials", "status": "in-progress", "assigneeRef": "sam", "due": {"kind": "none"}, "tags": ["preparation"], "subtasks": [{"id": "checklist", "title": "Write a materials checklist", "status": "planned"}]}
+  ],
+  "labels": {"audience": "beginners", "format": "in-person"}
+}

@@ -1,0 +1,6 @@
+{
+  "title": "Freeform notes",
+  "description": "This example has no schema. Try adding properties or changing the types of these values.",
+  "items": ["A text note", 42, true, null, {"label": "Nested object", "details": ["first", "second"]}],
+  "settings": {"compact": false, "zoom": 1.25}
+}

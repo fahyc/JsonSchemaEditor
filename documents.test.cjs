@@ -25,3 +25,13 @@ test('renaming a saved schema preserves self references, consumers and canonical
   const reg={'old.schema.json':{type:'object',properties:{self:{$ref:'old.schema.json#'}}},'consumer.schema.json':{type:'object',properties:{child:{$ref:'old.schema.json#'}}}};
   D.renameSchema(reg,'old.schema.json','new.schema.json');assert.equal(reg['old.schema.json'],undefined);assert.equal(reg['new.schema.json'].properties.self.$ref,'#');assert.equal(reg['consumer.schema.json'].properties.child.$ref,'new.schema.json#');
 });
+test('dependency filenames and convention candidates are explicit and safe',()=>{
+  assert.equal(D.referenceFilename('#/$defs/Node'),null);assert.equal(D.referenceFilename('https://example.org/person.schema.json#/$defs/Person'),'person.schema.json');assert.equal(D.referenceFilename('bad%2Fname.json'),null);
+  assert.deepEqual(D.schemaCandidates('project.workshop.json',{},null),['project.workshop.schema.json','project.schema.json']);assert.deepEqual(D.schemaCandidates('other.json',{$schema:'person.schema.json'},null),['person.schema.json']);
+  assert.deepEqual(D.namingWarnings('schema','project.schema.json'),[]);assert.deepEqual(D.namingWarnings('data','project.sample.json','project.schema.json'),[]);assert.ok(D.namingWarnings('data','sample.json','project.schema.json').length);assert.ok(D.namingWarnings('schema','My Schema.json').length);
+});
+test('generic example data validates and recursive/cross-file references resolve',()=>{
+  const fs=require('fs'),vm=require('vm'),context={window:{}};vm.runInNewContext(fs.readFileSync('schemas.bundle.js','utf8'),context);const C=require('./core.js'),reg=context.window.DEFAULT_SCHEMAS;
+  for(const example of context.window.DEFAULT_DATA_FILES)if(example.schema)assert.deepEqual(C.validate(reg,example.schema,reg[example.schema],example.value),[]);
+  for(const [name,schema]of Object.entries(reg))D.schemaRefs(schema,s=>assert.ok(C.resolve(reg,name,s.$ref).schema));
+});

@@ -1,0 +1,47 @@
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http');
+const server=http.createServer((req,res)=>{const name=decodeURIComponent(new URL(req.url,'http://local').pathname).slice(1)||'index.html',file=path.resolve(__dirname,name);if(!file.startsWith(__dirname+path.sep)){res.writeHead(403).end();return;}fs.readFile(file,(error,body)=>{if(error){res.writeHead(404).end();return;}const mime={'.js':'text/javascript','.html':'text/html','.css':'text/css','.json':'application/json','.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.png':'image/png'};res.setHeader('Content-Type',mime[path.extname(file)]||'application/octet-stream');res.end(body);});});
+(async()=>{
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const url='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({channel:'msedge',headless:true});
+  try{
+    const page=await browser.newPage({viewport:{width:1450,height:1000}}),errors=[];page.setDefaultTimeout(15000);page.on('pageerror',error=>errors.push(error.message));page.on('dialog',d=>d.accept());
+    await page.goto(url+'/?app=1');await page.waitForFunction(()=>window.WorkspaceFiles);
+    await page.evaluate(async()=>{
+      window.folder=await (await navigator.storage.getDirectory()).getDirectoryHandle('documents',{create:true});window.handles={};
+      const samples={'project.schema.json':{$schema:'https://json-schema.org/draft/2020-12/schema',type:'object',properties:{$schema:{const:'project.schema.json'},name:{type:'string'},people:{type:'array',items:{$ref:'person.schema.json'}}},required:['name','people'],additionalProperties:false},'person.schema.json':{type:'object',properties:{name:{type:'string'},project:{$ref:'project.schema.json'}},required:['name'],additionalProperties:false},'project.sample.json':{$schema:'project.schema.json',name:'disk-v1',people:[]}};
+      for(const [name,value]of Object.entries(samples)){const h=await folder.getFileHandle(name,{create:true}),w=await h.createWritable();await w.write(JSON.stringify(value));await w.close();handles[name]=h;}
+      window.writeDisk=async(name,value)=>{const w=await handles[name].createWritable();await w.write(JSON.stringify(value));await w.close();};
+      await WorkspaceFiles.openHandles([handles['project.sample.json']]);
+    });
+    assert.equal(await page.locator('#schema-list button').count(),0);assert.equal(await page.locator('#json-list button').count(),1);
+    await page.evaluate(()=>{window.showDirectoryPicker=async()=>folder;});await page.locator('#file-menu summary').click();await page.locator('#file-dependency-folder').click();await page.waitForFunction(()=>document.querySelectorAll('#schema-list button').length===2&&!document.querySelector('#save-file').disabled);assert.equal(await page.locator('#data-list button').count(),1);
+    const value=()=>page.evaluate(()=>state.data.find(d=>d.name==='project.sample.json').value.name);
+    const edit=async name=>{await page.locator('#json-view').click();const v=JSON.parse(await page.locator('#json-edit').inputValue());v.name=name;await page.locator('#json-edit').fill(JSON.stringify(v));await page.locator('#json-apply').click();};
+    const startOpen=()=>page.evaluate(()=>{window.operation=WorkspaceFiles.openHandles([handles['project.sample.json']]);});
+    const settled=()=>page.evaluate(()=>window.operation);
+    await page.locator('#json-view').click();const pending=JSON.parse(await page.locator('#json-edit').inputValue());pending.name='local-edit';await page.locator('#json-edit').fill(JSON.stringify(pending));await page.evaluate(()=>writeDisk('project.sample.json',{$schema:'project.schema.json',name:'disk-v2',people:[]}));await startOpen();assert.ok((await page.locator('#json-edit').inputValue()).includes('local-edit'));await page.locator('#json-apply').click();await page.locator('#disk-keep').click();await settled();assert.equal(await value(),'local-edit');
+    // Keeping local edits does not advance the disk baseline and erase overwrite protection.
+    await page.keyboard.press('Control+s');await page.locator('#file-no').click();await page.waitForFunction(()=>!document.querySelector('#save-file').disabled);
+    await startOpen();await page.locator('#disk-reload').click();await settled();assert.equal(await value(),'disk-v2');assert.equal(await page.locator('#data-list button').count(),1);
+    // Recent files reread the real handle even while the document is already open.
+    await page.evaluate(()=>writeDisk('project.sample.json',{$schema:'project.schema.json',name:'disk-v3',people:[]}));await page.locator('#file-menu summary').click();await page.locator('#recent-files').selectOption({label:'project.sample.json · data'});await page.locator('#disk-reload').click();await page.waitForFunction(()=>!document.querySelector('#save-file').disabled);assert.equal(await value(),'disk-v3');
+    await edit('another-local-edit');await page.locator('#file-menu summary').click();await page.locator('#file-reload').click();await page.locator('#disk-keep').click();await page.waitForFunction(()=>!document.querySelector('#save-file').disabled);assert.equal(await value(),'another-local-edit');
+    await page.locator('#file-menu summary').click();await page.locator('#file-reload').click();await page.locator('#disk-reload').click();await page.waitForFunction(()=>!document.querySelector('#save-file').disabled);assert.equal(await value(),'disk-v3');
+    await page.evaluate(async()=>{const s=JSON.parse(await (await handles['person.schema.json'].getFile()).text());s.description='Changed outside';await writeDisk('person.schema.json',s);await writeDisk('project.sample.json',{$schema:'project.schema.json',name:'disk-v4',people:[]});});
+    await page.locator('#file-menu summary').click();await page.locator('#file-reload-all').click();await page.locator('#disk-reload').click();await page.locator('#disk-reload').click();await page.waitForFunction(()=>!document.querySelector('#save-file').disabled);assert.equal(await value(),'disk-v4');assert.equal(await page.evaluate(()=>state.schemas['person.schema.json'].description),'Changed outside');
+    // Missing files are reported without dropping the recovered workspace document.
+    await page.evaluate(()=>folder.removeEntry('project.sample.json'));await page.locator('#file-menu summary').click();await page.locator('#file-reload-all').click();await page.waitForFunction(()=>!document.querySelector('#save-file').disabled);assert.equal(await value(),'disk-v4');
+    // Filename inference discovers the schema without an explicit $schema marker.
+    await page.evaluate(async()=>{const h=await folder.getFileHandle('project.extra.json',{create:true}),w=await h.createWritable();await w.write(JSON.stringify({name:'By filename',people:[]}));await w.close();await WorkspaceFiles.openHandles([h]);});assert.equal(await page.evaluate(()=>state.data.find(d=>d.name==='project.extra.json').schema),'project.schema.json');
+    // A name outside the convention is allowed only after a warning; consent is remembered.
+    await page.locator('#new-json').click();await page.locator('#new-name').fill('odd.json');await page.locator('#name-create').click();await page.locator('#close-editor').click();
+    await page.evaluate(async()=>{window.odd=await folder.getFileHandle('Odd Name.json',{create:true});window.showSaveFilePicker=async()=>odd;});await page.locator('#save-file').click();await page.locator('#naming-save-anyway').click();await page.waitForFunction(()=>!document.querySelector('#save-file').disabled);await page.keyboard.press('Control+s');await page.waitForFunction(()=>!document.querySelector('#save-file').disabled);assert.equal(await page.locator('#naming-save-anyway').isVisible(),false);
+    // Browser startup migrates untouched examples and preserves customized documents.
+    const legacy=Object.fromEntries(['RegionResponseV5.schema.json','EquipmentEffects.schema.json','MissionArrivalResponseV8.schema.json'].map(name=>[name,JSON.parse(fs.readFileSync(path.join(__dirname,'test-fixtures',name),'utf8'))]));
+    for(const customized of [false,true]){
+      const tab=await browser.newPage();tab.on('pageerror',e=>errors.push(e.message));await tab.addInitScript(({legacy,customized})=>{if(customized)legacy['RegionResponseV5.schema.json'].title='My customized region';localStorage.setItem('schema-dock.workspace.v1',JSON.stringify({schemas:legacy,data:[],mode:'schema',activeSchema:'RegionResponseV5.schema.json'}));},{legacy,customized});await tab.goto(url);await tab.waitForFunction(()=>window.WorkspaceFiles);
+      assert.ok(await tab.locator('[data-file="project.schema.json"]').count());assert.equal(await tab.locator('[data-file="RegionResponseV5.schema.json"]').count(),customized?1:0);if(customized)assert.equal(await tab.evaluate(()=>state.schemas['RegionResponseV5.schema.json'].title),'My customized region');assert.equal(await tab.locator('#data-list button').count(),1);assert.equal(await tab.locator('#json-list button').count(),1);await tab.close();
+    }
+    assert.deepEqual(errors,[]);console.log('File synchronization passed: disk freshness on open/recent, keep/reload decisions, explicit reloads, folder dependencies, missing files, naming warning, generic-example migration.');
+  }finally{await browser.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;}).finally(()=>server.close());

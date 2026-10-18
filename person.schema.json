@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema-dock.example/schemas/person.schema.json",
+  "title": "Person",
+  "description": "A team member with contact information and simple preferences.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "role"],
+  "properties": {
+    "$schema": {"type": "string", "const": "person.schema.json", "description": "Optional explicit link to this document's schema."},
+    "id": {"type": "string", "minLength": 1, "description": "Stable ID used by tasks and project ownership references."},
+    "name": {"type": "string", "minLength": 1, "description": "Display name."},
+    "role": {"type": "string", "enum": ["coordinator", "contributor", "reviewer"]},
+    "email": {"type": "string", "description": "Contact email address."},
+    "preferences": {"type": "object", "description": "A dictionary of named text preferences.", "additionalProperties": {"type": "string"}}
+  }
+}

@@ -1,14 +1,16 @@
 # JsonSchemaEditor — Schema Dock
 
-A static HTML/CSS/JavaScript schema and game-data editor. No server-side code, build step, package install, external fonts, or CDN is needed to run it.
+A static HTML/CSS/JavaScript schema and JSON editor. No server-side code, build step, package install, external fonts, or CDN is needed to run it.
 
 ## Open it
 
 Serve this folder on a static HTTP server, for example `python -m http.server 8000`, then open `http://localhost:8000`. The browser version retains the example schemas listed in `startup.js`. Double-clicking `index.html` also supports the browser editor with bundled examples, but installation and native file saving require localhost or HTTPS. The app only writes to files you explicitly open and save.
 
-`startup.js` is the explicit startup filename list. When served over HTTP(S), those files are fetched from beside `index.html`. When opened from disk, `schemas.bundle.js` supplies the same initial documents because browsers restrict file fetches. After changing the schema files, run `node bundle.cjs` to refresh the offline bundle. Add more filenames to `startup.js` and rerun the bundler to include them offline.
+`startup.js` lists browser startup schemas and optional data examples. The generic examples are `project.schema.json`, `person.schema.json`, and `task.schema.json`, plus `project.example.json` and schema-free `notes.example.json`. They demonstrate external references, recursive subtasks, enums, `oneOf` variants, and dictionaries. When served over HTTP(S), files are fetched from beside `index.html`. When opened from disk, `schemas.bundle.js` supplies the same initial documents because browsers restrict file fetches. After changing example files or the startup list, run `node bundle.cjs` to refresh the offline bundle.
 
 A saved browser workspace takes precedence over startup files. The **?** menu has **Reload startup schemas** to load updated copies. Export your edits first, or use Undo immediately after a reload.
+
+Untouched legacy browser examples migrate to the generic set on the first updated launch. Exact hashes identify original examples; customized schemas, file-linked schemas, and schemas needed by retained documents are preserved. Legacy contract fixtures remain under `test-fixtures/` for regression tests only. They are not loaded as examples or cached by the installed app.
 
 ## Install as an app
 
@@ -20,9 +22,19 @@ After installation and initial offline setup, the application shell works withou
 
 ## Open files and schema-free JSON
 
-Use **File → Open JSON**, **Ctrl+O**, the **Open JSON files** button, or Windows file opening. Select several files at once to load their schemas and data into one workspace. Schemas are registered before data is matched, so dependencies opened in the same batch are available. An already-open file handle focuses its existing sidebar document instead of making another copy. Different files with the same schema filename require a replacement confirmation, since schema references use canonical filenames.
+Use **File → Open JSON**, **Ctrl+O**, the **Open JSON files** button, or Windows file opening. Select several files at once to load their schemas and data into one workspace. Schemas are registered before data is matched, so dependencies opened in the same batch are available. Reopening a file, including through Windows double-click or Recent files, reads its current local contents. If it is already open and the disk contents changed, **Keep workspace version** preserves your edits and **Reload from disk** replaces them without creating another document. Keeping a workspace version does not advance its disk baseline, so a later save still warns about external changes. Source/AI dialogs finish before queued incoming opens are processed, preventing an incoming alert from replacing uncommitted source edits. Different files with the same schema filename require a replacement confirmation, since schema references use canonical filenames.
 
-Schema filenames and JSON Schema dialect declarations identify schemas. Documents with suggestive but ambiguous schema fields prompt for their kind. Otherwise a unique compatible open schema is assigned when possible; unmatched data goes under **JSON Files · No Schema**. **Choose schema** attaches/removes a schema later, and **File → Change document kind** corrects schema/data classification. Missing schema dependencies stay visible as validation issues; the browser cannot silently read neighboring files without access, so open those files together (or reopen their previously granted handles from Recent files).
+In the installed PWA, **File → Reload from disk** refreshes the selected linked file and **Reload all from disk** rereads all linked open files. Each changed/unsaved file gets its own keep/reload choice. Unlinked drafts are retained, missing files report errors without removing the workspace document, and reloading keeps the active sidebar selection. Successful reloads can be undone. File permission may need to be renewed after restarting the app.
+
+## Dependency folders and filenames
+
+Choose **File → Choose dependency folder…** in the installed app to grant read access to a folder containing your JSON files. The app remembers the directory handle and discovers neighboring schema files for documents inside that directory (including a document's own subfolder). A double-click launch grants access to the launched file, not permission to browse its parent folder, so this folder grant is required for previously unseen siblings. The API may require permission again on a later session. Directory handles are stored locally; no folder contents are uploaded. See [the directory picker](https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker).
+
+The standard is **`type.schema.json`** for schemas and **`type.json`** or **`type.name.json`** for data, using lowercase words with hyphens. For example, `project.workshop.json` discovers `project.schema.json` beside it. An explicit data `$schema` reference or remembered schema choice takes priority over filename inference. Schema `$ref` dependencies load recursively; visited file handles prevent cycles. Previously granted recent schema handles can also supply dependencies. Documents outside the selected folder cannot be searched through that directory's permission. No remote schema URLs are fetched automatically. Without access, open dependencies together through Open JSON.
+
+Native Save, Save As and PWA Export warn about nonstandard filenames or data names that do not match their associated schema. You can cancel or **Save with this name**; acknowledgment is remembered for that filename/schema pair. This is a discovery convention, not a requirement of JSON Schema. Explicitly removing a data file's schema keeps it in schema-free mode instead of reattaching one during the next discovery pass.
+
+Schema filenames and JSON Schema dialect declarations identify schemas. Documents with suggestive but ambiguous schema fields prompt for their kind. Otherwise a unique compatible open schema is assigned when possible; unmatched data goes under **JSON Files · No Schema**. **Choose schema** attaches/removes a schema later, and **File → Change document kind** corrects schema/data classification. Missing schema dependencies stay visible as validation issues.
 
 The **+** beside JSON Files creates a blank JSON object. Its node editor supports property creation/renaming/removal, empty property names, escaped names, arbitrary JSON types, nested objects/arrays, heterogeneous array items, and reordering. Object/array children remain nodes. Scalars and null can also be root documents. **JSON** edits source text. Malformed opened JSON retains its original source for correction instead of being discarded; syntax must be fixed before disk saving. Schema-free documents receive syntax checks, with no schema property restrictions or game-specific reference inference. Saving formats JSON with two-space indentation; exact whitespace and arbitrary-precision numbers are not preserved by the JavaScript value editor. JSONC/JSON5 and large-file virtualization are outside this version.
 
@@ -104,5 +116,7 @@ Run `node --test ai.test.cjs` for prompt ordering, dependencies, model filtering
 `node navigation.test.cjs` checks pointer-centered zoom, drag/click separation, editor scrolling, Fit/reset, and keyboard focus. It uses the same Playwright setup and generates layout screenshots.
 
 `node graph-browser.test.cjs` checks expanded schema/data summaries, escaped user text, tooltip placement, zoom-correct node dragging, stationary siblings/camera, and click-to-edit behavior. The navigation suite also checks live link updates, persisted manual positions, Auto layout reset, and document-content preservation. The PWA suite verifies Export followed by Ctrl+S writes to the same selected file without another picker.
+
+`node file-sync-browser.test.cjs` checks disk freshness on repeated launches/recent opens, preservation of uncommitted source edits, keep/reload decisions, explicit reload commands, folder-granted recursive dependency loading, missing files, filename warnings, and migration to generic examples while retaining custom documents. It uses isolated real browser file handles and a temporary localhost server.
 
 `node feedback.test.cjs` checks array/reference toggles, typed enum editing, schema/data node deletion, reference counts, cancellation, undo, and persistence with the same Playwright setup.

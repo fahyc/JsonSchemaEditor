@@ -18,7 +18,7 @@
     <label class="field-label">Maximum output tokens<input id="ai-max-tokens" type="number" min="1" step="1" placeholder="Model default"></label></div>
     <p class="hint">Token limit includes thinking and output. Supported effort levels and verbosity vary by model; leave Model default if an option is rejected.</p>
     <h3>Reference data files</h3><p class="hint">Only checked files are sent, without their schemas.</p><div id="ai-files"></div>
-    <label class="field-label">Prompt<textarea id="ai-prompt" rows="6" required placeholder="Describe the new game data you want to create…"></textarea></label>
+    <label class="field-label">Prompt<textarea id="ai-prompt" rows="6" required placeholder="Describe the JSON data you want to create…"></textarea></label>
     <details><summary>Preview outgoing prompt</summary><pre id="ai-preview"></pre></details></fieldset>
     <p id="ai-status" role="status"></p><details id="ai-history" hidden><summary>API response history</summary><p class="hint">Full response bodies and available HTTP headers, kept until reload or cleared. API keys are redacted. A network failure or cancellation may have no response body.</p><label class="field-label">Attempt<select id="ai-attempt"></select></label><pre id="ai-raw"></pre><div class="inline-actions"><button type="button" id="ai-download-response">Download response dump</button><button type="button" id="ai-clear-history">Clear history</button></div></details><div id="ai-result" hidden><h3>Generated draft needs corrections</h3><pre id="ai-errors"></pre><details><summary>Generated JSON</summary><pre id="ai-json"></pre></details><button type="button" id="ai-draft">Open draft in editor</button></div>
     <div class="modal-actions"><button type="button" id="ai-cancel" hidden>Cancel generation</button><button type="submit" class="primary" id="ai-generate">Generate data</button></div></form>`;
@@ -42,7 +42,7 @@
   function close(){controller?.abort();dialog.close();}
   function install(result){
     if(!C.equal(result.schemas,state.schemas)){status('Schemas changed during generation. Generate again using the current schemas.');return;}
-    let base=result.schema.replace(/\.schema\.json$|\.json$/i,'')+'-generated',name=base+'.json',i=2;while(state.data.some(d=>d.name===name))name=base+'-'+(i++)+'.json';
+    let base=result.schema.replace(/\.schema\.json$|\.json$/i,'')+'.generated',name=base+'.json',i=2;while(state.data.some(d=>d.name===name))name=base+'-'+(i++)+'.json';
     if(change(()=>{const d={id:cryptoId(),name,schema:result.schema,value:result.value};state.data.push(d);state.activeData=d.id;state.activeSchema=d.schema;state.mode='data';})){
       $('#search').value='';render();dialog.close();notify(result.errors.length?'Draft opened. Fix the validation issues before export.':'Generated data validated and added to your workspace.');
     }

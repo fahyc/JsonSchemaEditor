@@ -44,6 +44,23 @@
     for(const [s,ref]of updates)s.$ref=ref;
     Object.defineProperty(reg,newName,{value:reg[oldName],enumerable:true,writable:true,configurable:true});delete reg[oldName];
   }
-  const api={parse,classify,matchingSchemas,graph,initial,rename,schemaRefs,renameSchema};
+  function referenceFilename(ref){
+    if(typeof ref!=='string'||ref.startsWith('#'))return null;
+    try{const file=decodeURIComponent(ref.split('#')[0].split('?')[0].replace(/\\/g,'/').split('/').pop());return /^[a-zA-Z0-9][a-zA-Z0-9._-]*\.json$/i.test(file)?file:null;}catch{return null;}
+  }
+  function schemaCandidates(name,value,remembered){
+    const explicit=referenceFilename(value?.$schema);if(explicit)return [explicit];if(remembered)return [remembered];
+    const parts=name.replace(/\.json$/i,'').split('.'),names=[];while(parts.length){names.push(parts.join('.')+'.schema.json');parts.pop();}return names;
+  }
+  function namingWarnings(kind,name,schema){
+    const warnings=[];
+    if(kind==='schema'){
+      if(!/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*\.schema\.json$/.test(name))warnings.push('Schema filenames should use lowercase words separated by hyphens: type.schema.json.');
+    }else{
+      if(!/^[a-z][a-z0-9-]*(?:\.[a-z0-9-]+)*\.json$/.test(name)||/\.schema\.json$/i.test(name))warnings.push('Data filenames should use lowercase names such as type.json or type.name.json, without the .schema suffix.');
+      if(schema){const stem=schema.replace(/\.schema\.json$/i,'');if(!name.startsWith(stem+'.')||!name.endsWith('.json'))warnings.push('Use '+stem+'.json or '+stem+'.name.json so the matching schema can be found automatically.');}
+    }return warnings;
+  }
+  const api={parse,classify,matchingSchemas,graph,initial,rename,schemaRefs,renameSchema,referenceFilename,schemaCandidates,namingWarnings};
   if(typeof module==='object')module.exports=api;else root.DocumentTools=api;
 })(typeof window==='object'?window:globalThis);
