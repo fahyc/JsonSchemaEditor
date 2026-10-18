@@ -1,6 +1,7 @@
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright'),assert=require('node:assert/strict'),path=require('node:path');
 (async()=>{const browser=await chromium.launch({channel:'msedge',headless:true});try{
   const page=await browser.newPage({viewport:{width:1550,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await require('./test-fixtures.cjs').seed(page);
   await page.goto('file:///'+path.join(__dirname,'index.html').replace(/\\/g,'/'));await page.waitForSelector('.node');
   const schema={type:'object',properties:{people:{type:'array',minItems:1,items:{$ref:'#/$defs/Person'}},color:{type:'string',enum:['Red','Blue']},die:{type:'integer',enum:[4,6,8]},selectedRef:{type:'string'},entryRefs:{type:'array',items:{type:'string'}},prose:{type:'string'}},$defs:{Person:{type:'object',properties:{id:{type:'string'},name:{type:'string'}},required:['id','name'],additionalProperties:false}},additionalProperties:false};
   await page.locator('#schema-files').setInputFiles({name:'People.schema.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(schema))});await page.waitForFunction(()=>document.querySelector('#page-title').textContent==='People');

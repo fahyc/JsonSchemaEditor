@@ -1,0 +1,817 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scrappirates.example/schemas/region-response-v5.schema.json",
+  "title": "Scrap Pirates Region Response V5",
+  "description": "Defines durable regional world content for AI generation. Omit collections and optional fields when there is nothing meaningful to say; mission-specific characters, cargo, and transient story state belong in mission responses.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "factions": {
+      "type": "array",
+      "description": "Factions introduced by this region. Omit when the region introduces none.",
+      "items": {
+        "$ref": "#/$defs/Faction"
+      }
+    },
+    "systems": {
+      "type": "array",
+      "description": "Star systems defined by this response.",
+      "items": {
+        "$ref": "#/$defs/System"
+      },
+      "minItems": 1
+    },
+    "locations": {
+      "type": "array",
+      "description": "Dockable stations or landable ports. Omit when there are none.",
+      "items": {
+        "$ref": "#/$defs/Location"
+      }
+    },
+    "equipmentDefinitions": {
+      "type": "array",
+      "description": "Equipment definitions introduced by this region. Omit when there are none.",
+      "items": {
+        "$ref": "#/$defs/EquipmentDefinition"
+      }
+    },
+    "shipCards": {
+      "type": "array",
+      "description": "NPC ship-card definitions introduced by this region. Omit when there are none.",
+      "items": {
+        "$ref": "#/$defs/ShipCard"
+      }
+    },
+    "decks": {
+      "type": "array",
+      "description": "Weighted content decks introduced by this region. Omit when there are none.",
+      "items": {
+        "$ref": "#/$defs/Deck"
+      }
+    },
+    "id": {
+      "description": "Stable ID for this generated region document.",
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "description": "Response document kind.",
+      "type": "string",
+      "const": "region"
+    },
+    "revision": {
+      "description": "Positive revision of this region document.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "topologyVersion": {
+      "type": "string",
+      "const": "base7-damage-loop-v3"
+    },
+    "schemaVersion": {
+      "const": 5
+    }
+  },
+  "required": [
+    "systems",
+    "id",
+    "schemaVersion",
+    "topologyVersion"
+  ],
+  "$defs": {
+    "ModuleDeckBinding": {
+      "type": "object",
+      "description": "Custom module deck for one faction affinity. Omit a color to use the host's default deck.",
+      "properties": {
+        "affinity": {
+          "description": "Gameplay affinity/color.",
+          "type": "string",
+          "enum": [
+            "Green",
+            "Blue",
+            "Yellow",
+            "Red"
+          ]
+        },
+        "deckRef": {
+          "description": "ID of the module deck to use.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "affinity",
+        "deckRef"
+      ]
+    },
+    "FactionRelation": {
+      "type": "object",
+      "description": "Non-neutral starting relationship from one faction to another. Omit neutral relationships.",
+      "properties": {
+        "factionRef": {
+          "description": "Name of the faction this relationship points to.",
+          "type": "string",
+          "minLength": 1
+        },
+        "stance": {
+          "description": "Starting stance toward the referenced faction.",
+          "type": "string",
+          "enum": [
+            "Friendly",
+            "Hostile",
+            "Neutral"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "factionRef",
+        "stance"
+      ]
+    },
+    "Faction": {
+      "type": "object",
+      "description": "A durable faction the AI DM can use for ownership, conflict, encounters, and world reactions.",
+      "properties": {
+        "name": {
+          "description": "Player-facing faction name; also used by factionRef fields.",
+          "type": "string",
+          "minLength": 1
+        },
+        "affinity": {
+          "description": "Gameplay affinity/color. Blue often fits corporate factions, Yellow often fits sparrows, and Green often fits authoritarians or brigands; these are tendencies, not hard rules.",
+          "type": "string",
+          "enum": [
+            "Green",
+            "Blue",
+            "Yellow",
+            "Red"
+          ]
+        },
+        "description": {
+          "description": "What the faction wants, how it behaves, and what makes interacting with it distinctive.",
+          "type": "string",
+          "minLength": 1
+        },
+        "shipDecks": {
+          "type": "object",
+          "description": "Custom ship deck IDs by class. Omitted classes use the host's default/fallback deck.",
+          "properties": {
+            "small": {
+              "type": "string",
+              "minLength": 1
+            },
+            "medium": {
+              "type": "string",
+              "minLength": 1
+            },
+            "large": {
+              "type": "string",
+              "minLength": 1
+            },
+            "capital": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "moduleDecks": {
+          "type": "array",
+          "description": "Custom module decks by affinity. Omit colors that should use defaults.",
+          "items": {
+            "$ref": "#/$defs/ModuleDeckBinding"
+          }
+        },
+        "relations": {
+          "type": "array",
+          "description": "Explicit non-neutral relationships to other factions. Unlisted factions are Neutral.",
+          "items": {
+            "$ref": "#/$defs/FactionRelation"
+          }
+        },
+        "secretInfo": {
+          "type": "string",
+          "description": "Hidden motives, leverage, or truths available to the AI DM but not revealed by default.",
+          "minLength": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hostileToPlayer": {
+          "type": "boolean",
+          "description": "Initial hostility toward the captain. All ships of this faction share it; captain actions can additionally make a faction hostile. Default false."
+        },
+        "friendlyToPlayer": {
+          "type": "boolean",
+          "description": "Initially friendly to the captain; automatic support when joining a fight against a non-friendly side. Hostility overrides friendship. Default false."
+        },
+        "stature": {
+          "description": "Narrative scale or role of the faction, such as local, civilian, minor, regional, or major.",
+          "type": "string",
+          "minLength": 1
+        },
+        "hullDecks": {
+          "type": "array",
+          "description": "Hull decks this faction may use.",
+          "items": {
+            "$ref": "#/$defs/DefinitionDeckBinding"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "affinity",
+        "description",
+        "id"
+      ]
+    },
+    "System": {
+      "type": "object",
+      "description": "Canonical facts for one generated star system.",
+      "properties": {
+        "address": {
+          "type": "string",
+          "pattern": "^[1-7]{1,13}$",
+          "description": "Coordinate identity: 1–13 digits, each 1–7."
+        },
+        "tech": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "controllerRef": {
+          "description": "Stable faction ID, not a display name.",
+          "type": "string",
+          "minLength": 1
+        },
+        "minorRef": {
+          "description": "Stable faction ID, not a display name.",
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "description": "Concise canonical identity of the system: what would the local traders know about it?",
+          "type": "string",
+          "minLength": 1
+        },
+        "callsign": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Persistent story-assigned display label; identity and references use address."
+        },
+        "name": {
+          "description": "Player-facing system name.",
+          "type": "string",
+          "minLength": 1
+        },
+        "hackedGate": {
+          "type": "boolean",
+          "description": "Hidden gate capability. Do not reveal in public description or UI without the captain owning its password."
+        },
+        "civilianRef": {
+          "description": "Civilian faction associated with the system, or null when none is defined.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "prosperity": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "secretInfo": {
+          "type": "string",
+          "minLength": 1
+        },
+        "inhabited": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "address",
+        "description"
+      ]
+    },
+    "Location": {
+      "type": "object",
+      "description": "A dockable station or landable planet port inside a system.",
+      "properties": {
+        "name": {
+          "description": "Player-facing location name.",
+          "type": "string",
+          "minLength": 1
+        },
+        "systemRef": {
+          "type": "string",
+          "pattern": "^[1-7]{1,13}$",
+          "description": "Coordinate identity: 1–13 digits, each 1–7."
+        },
+        "kind": {
+          "description": "Location type.",
+          "type": "string",
+          "enum": [
+            "Station",
+            "PlanetPort"
+          ]
+        },
+        "description": {
+          "description": "What this place is, what happens here, and why a player might care about it.",
+          "type": "string",
+          "minLength": 1
+        },
+        "services": {
+          "type": "array",
+          "description": "Recognized services the player can access here. Omit when none are available.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "Outfitter",
+              "Shipyard",
+              "Junkyard",
+              "Repair",
+              "Job Board",
+              "Trading Post",
+              "Missions",
+              "Trade",
+              "ParentalRecovery"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "appearance": {
+          "description": "Short visual brief for depicting the location.",
+          "type": "string",
+          "minLength": 1
+        },
+        "secretInfo": {
+          "type": "string",
+          "minLength": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tech": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "prosperity": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "hidden": {
+          "type": "boolean",
+          "default": false,
+          "description": "Initially omitted from player navigation until RevealLocation."
+        },
+        "restricted": {
+          "type": "boolean",
+          "default": false,
+          "description": "Initially denies docking until SetLocationAccess Granted. Revelation does not grant access."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "systemRef",
+        "kind",
+        "description",
+        "id"
+      ]
+    },
+    "WeaponProfile": {
+      "type": "object",
+      "description": "Weapon-specific dice and shot information.",
+      "properties": {
+        "shots": {
+          "description": "Shots produced by one activation. Usually 1-4; higher damage generally means fewer shots.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "baseDiceCount": {
+          "description": "Attack dice rolled per shot. Usually 1; very powerful cannons may use 2-3.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "dieSides": {
+          "description": "Faces on each base attack die. Typical dice are d4, d6, d8, d10, d12, or d20. Balance die size against shots, dice count, and effects.",
+          "type": "integer",
+          "enum": [
+            4,
+            6,
+            8,
+            10,
+            12,
+            20
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "shots",
+        "baseDiceCount",
+        "dieSides"
+      ]
+    },
+    "EquipmentEffect": {
+      "$ref": "EquipmentEffects.schema.json#/$defs/EquipmentEffect"
+    },
+    "EquipmentDefinition": {
+      "type": "object",
+      "description": "Immutable equipment definition available to ships or markets.",
+      "properties": {
+        "id": {
+          "description": "Stable ID used by deck entries and other references.",
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "description": "Player-facing equipment name.",
+          "type": "string",
+          "minLength": 1
+        },
+        "affinity": {
+          "description": "Gameplay affinity/color.",
+          "type": "string",
+          "enum": [
+            "Green",
+            "Blue",
+            "Yellow",
+            "Red"
+          ]
+        },
+        "category": {
+          "description": "Broad equipment category used by catalogs and NPC system-slot draws. Economy modules are generally civilian/trading equipment rather than warship systems.",
+          "type": "string",
+          "enum": [
+            "Armament",
+            "Defense",
+            "Economy"
+          ]
+        },
+        "defense": {
+          "description": "Defense used by combat targeting/resolution. Delicate civilian equipment is often 1-3, cannons 3-5, and armor 5-7. Red modules might be 6-13 depending on their category.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "inputs": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "string",
+            "enum": [
+              "",
+              "Green",
+              "Blue",
+              "Yellow",
+              "Red"
+            ]
+          },
+          "description": "Exactly three east-edge slots, top/middle/bottom. Colors must be distinct. With two inputs use [color, \"\", otherColor]. Invalid colors become empty; repeated colors are removed; two remaining colors move to top/bottom. Discard an inputless module. Reactors instead require [color,\"\",\"\"] and place their one input at (0,1) West."
+        },
+        "weapon": {
+          "description": "Weapon profile when this equipment is a weapon. Omit for non-weapons.",
+          "$ref": "#/$defs/WeaponProfile"
+        },
+        "effects": {
+          "type": "array",
+          "description": "Registered engine effects applied by this equipment. Omit when it has no special effects. Most non-red equipment has zero or one effect type, but some effect types are designed to be specified in multiple EquipmentEffect objects.",
+          "items": {
+            "$ref": "#/$defs/EquipmentEffect"
+          }
+        },
+        "basePrice": {
+          "description": "Base market price before local modifiers.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "reactor": {
+          "$ref": "#/$defs/ReactorDefinition"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "portraitBrief": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "affinity",
+        "category",
+        "defense",
+        "inputs",
+        "basePrice"
+      ]
+    },
+    "SystemSlot": {
+      "type": "object",
+      "description": "Generally a small ship has 2-3 of these, a medium one 4-5, and a large one 6 or more, but red slots are balanced at around twice as strong as other slots. The type of equipment that might be drawn is controlled by the faction's deck.",
+      "properties": {
+        "color": {
+          "description": "Affinity/color of equipment drawn for this slot.",
+          "type": "string",
+          "enum": [
+            "Green",
+            "Blue",
+            "Yellow",
+            "Red"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Armament",
+            "Defense",
+            "Economy"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "color",
+        "category"
+      ]
+    },
+    "FuelLoot": {
+      "type": "object",
+      "description": "Fuel included in an NPC ship's loot profile.",
+      "properties": {
+        "color": {
+          "description": "Gameplay affinity/color.",
+          "type": "string",
+          "enum": [
+            "Green",
+            "Blue",
+            "Yellow",
+            "Red"
+          ]
+        },
+        "quantity": {
+          "description": "Number of fuel tokens in this loot entry.",
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "color",
+        "quantity"
+      ]
+    },
+    "ShipCard": {
+      "type": "object",
+      "description": "There are default ship cards as fallbacks for civilian use, but some factions are powerful or wealthy enough to have custom ship cards.",
+      "properties": {
+        "id": {
+          "description": "Stable ID used by ship decks.",
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "description": "Player-facing NPC ship-card name.",
+          "type": "string",
+          "minLength": 1
+        },
+        "affinity": {
+          "description": "Gameplay affinity/color.",
+          "type": "string",
+          "enum": [
+            "Green",
+            "Blue",
+            "Yellow",
+            "Red"
+          ]
+        },
+        "class": {
+          "description": "Ship class, typically small, medium, large, or capital.",
+          "type": "string",
+          "enum": [
+            "Small",
+            "Medium",
+            "Large",
+            "Capital"
+          ]
+        },
+        "portraitBrief": {
+          "description": "Visual brief for the ship portrait.",
+          "type": "string",
+          "minLength": 1
+        },
+        "coreDefense": {
+          "description": "Base defense of the ship core. Generally 2-4 for small or civilian ships, 3-5 for medium ships, and 6-10 for large ships.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "systemSlots": {
+          "type": "array",
+          "description": "Ordered outside-to-core system slots for NPC combat.",
+          "items": {
+            "$ref": "#/$defs/SystemSlot"
+          },
+          "minItems": 1
+        },
+        "hullLootColors": {
+          "type": "array",
+          "description": "Affinity colors used when resolving hull loot. Omit when there is no hull loot.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "Green",
+              "Blue",
+              "Yellow",
+              "Red"
+            ]
+          }
+        },
+        "fuelLoot": {
+          "type": "array",
+          "description": "Fuel loot associated with this ship card. Omit when there is none.",
+          "items": {
+            "$ref": "#/$defs/FuelLoot"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "affinity",
+        "class",
+        "portraitBrief",
+        "coreDefense",
+        "systemSlots"
+      ]
+    },
+    "DeckEntry": {
+      "type": "object",
+      "description": "Weighted entry in a generated content deck.",
+      "properties": {
+        "definitionRef": {
+          "description": "ID of the equipment definition or ship card drawn by this entry.",
+          "type": "string",
+          "minLength": 1
+        },
+        "weight": {
+          "description": "Relative positive draw weight (number of copies in the deck.)",
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "definitionRef",
+        "weight"
+      ]
+    },
+    "Deck": {
+      "type": "object",
+      "description": "Weighted content deck referenced by factions or encounters.",
+      "properties": {
+        "id": {
+          "description": "Stable deck ID used by faction deck bindings.",
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "description": "Definition category drawn by this deck - Ship or Module. Don't mix both Ships and Modules in one deck. ",
+          "type": "string",
+          "enum": [
+            "Ship",
+            "Module"
+          ]
+        },
+        "affinity": {
+          "description": "Gameplay affinity/color.",
+          "type": "string",
+          "enum": [
+            "Green",
+            "Blue",
+            "Yellow",
+            "Red"
+          ]
+        },
+        "class": {
+          "description": "Ship class restriction for a class-specific deck. Omit when not class-specific.",
+          "type": "string",
+          "enum": [
+            "Small",
+            "Medium",
+            "Large",
+            "Capital",
+            "Unspecific"
+          ]
+        },
+        "entries": {
+          "type": "array",
+          "description": "The actual contents of this deck.",
+          "items": {
+            "$ref": "#/$defs/DeckEntry"
+          },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "affinity",
+        "entries"
+      ]
+    },
+    "DefinitionDeckBinding": {
+      "type": "object",
+      "description": "Faction binding to a module or hull definition deck.",
+      "properties": {
+        "affinity": {
+          "description": "Gameplay affinity/color.",
+          "type": "string",
+          "enum": [
+            "Green",
+            "Blue",
+            "Yellow",
+            "Red"
+          ]
+        },
+        "deckRef": {
+          "description": "Stable reference to another published record or definition.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "affinity",
+        "deckRef"
+      ]
+    },
+    "ReactorDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Fixed 3x5 reactor. inputs must be [color,\"\",\"\"]; input is upper left. Above 3 cumulative output copies per round overloads the ship.",
+      "properties": {
+        "sides": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 100
+        },
+        "copies": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 100,
+          "description": "One entry per die face; length equals sides. Above-range substituted values use the final entry.",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          }
+        },
+        "upperRight": {
+          "type": "string",
+          "enum": [
+            "Green",
+            "Blue",
+            "Yellow",
+            "Red"
+          ]
+        },
+        "lowerRight": {
+          "type": "string",
+          "enum": [
+            "Green",
+            "Blue",
+            "Yellow",
+            "Red"
+          ]
+        },
+        "lowerLeft": {
+          "type": "string",
+          "enum": [
+            "None",
+            "Green",
+            "Blue",
+            "Yellow",
+            "Red"
+          ]
+        }
+      },
+      "required": [
+        "sides",
+        "copies",
+        "upperRight",
+        "lowerRight",
+        "lowerLeft"
+      ]
+    }
+  }
+}

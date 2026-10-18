@@ -5,6 +5,7 @@ const path=require('node:path');
   const browser=await chromium.launch({headless:true,channel:'msedge'});
   const page=await browser.newPage({viewport:{width:1500,height:1000}});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await require('./test-fixtures.cjs').seed(page);
   await page.goto('file:///'+path.join(__dirname,'index.html').replace(/\\/g,'/'));
   await page.waitForSelector('.node');
   assert.equal(await page.locator('#schema-list button').count(),3);

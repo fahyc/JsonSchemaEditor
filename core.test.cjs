@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const C=require('./core.js');
 const names=['RegionResponseV5.schema.json','EquipmentEffects.schema.json','MissionArrivalResponseV8.schema.json'];
-const reg=Object.fromEntries(names.map(n=>[n,JSON.parse(fs.readFileSync(path.join(__dirname,n),'utf8'))]));
+const reg=Object.fromEntries(names.map(n=>[n,JSON.parse(fs.readFileSync(path.join(__dirname,'test-fixtures',n),'utf8'))]));
 const [region,effects,mission]=names;
 const check=(doc,s,v)=>C.validate(reg,doc,s,v);
 const def=(name)=>reg[mission].$defs[name];

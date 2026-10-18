@@ -332,7 +332,7 @@
       ]
     },
     "EquipmentEffect": {
-      "$ref": "EquipmentEffects.schema.json#/$defs/EquipmentEffect"
+      "$ref": "EquipmentEffectsV2.schema.json#/$defs/EquipmentEffect"
     },
     "EquipmentDefinition": {
       "type": "object",

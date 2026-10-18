@@ -23,6 +23,6 @@ test('deep trees keep their columns instead of collapsing at a depth cap',()=>{
   const l=layoutFamilies(ns,es);assert.equal(l.levels.get('14'),15);assert.equal(new Set([...l.positions.values()].map(mid)).size,1);noOverlap(l);
 });
 test('all three supplied schemas have finite, nonoverlapping canonical positions',()=>{
-  const reg=Object.fromEntries(['RegionResponseV5','EquipmentEffects','MissionArrivalResponseV8'].map(n=>[n+'.schema.json',JSON.parse(fs.readFileSync(path.join(__dirname,n+'.schema.json'),'utf8'))]));
+  const reg=Object.fromEntries(['RegionResponseV5','EquipmentEffects','MissionArrivalResponseV8'].map(n=>[n+'.schema.json',JSON.parse(fs.readFileSync(path.join(__dirname,'test-fixtures',n+'.schema.json'),'utf8'))]));
   const g=C.index(reg),l=layoutFamilies(g.nodes,g.edges);assert.equal(l.positions.size,g.nodes.length);for(const p of l.positions.values()){assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));assert.ok(p.x>=0&&p.y>=0);}noOverlap(l);
 });
