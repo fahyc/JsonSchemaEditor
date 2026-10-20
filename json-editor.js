@@ -36,6 +36,7 @@ function showFreeData(){
       if(typeof v==='number'){input.type='number';input.step='any';}input.value=String(v);
       input.onchange=()=>{let next=input.value;if(typeof v==='boolean')next=next==='true';if(typeof v==='number'){if(next.trim()===''||!Number.isFinite(Number(next))){notify('Enter a finite number.');input.value=v;return;}next=Number(next);}dataChange(()=>setData(p,next));};ctl.append(input);
     }
+    addDataPromotion(ctl,p,Array.isArray(value)?C.unesc(path.split('/').pop()):key);
     if(container)row.querySelector('.free-remove').onclick=()=>dataChange(()=>C.remove(d.value,p));
     if(Array.isArray(value)){
       const up=row.querySelector('.free-up'),down=row.querySelector('.free-down');up.disabled=i===0;down.disabled=i===value.length-1;

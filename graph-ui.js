@@ -59,7 +59,7 @@ const GraphUI=(()=>{
     canvas.addEventListener('wheel',hide,{passive:true});canvas.addEventListener('click',hide);
     canvas.addEventListener('pointerdown',event=>{
       if(!event.isPrimary||![0,1].includes(event.button))return;
-      hide();if(event.target.closest('.node-delete'))return;const element=event.target.closest('.node'),n=element?visible[+element.dataset.node]:null;
+      hide();if(event.target.closest('.node-delete,.node-promote'))return;const element=event.target.closest('.node'),n=element?visible[+element.dataset.node]:null;
       if(n&&event.button!==0){event.preventDefault();return;}
       suppressGraphClick=false;gesture={id:event.pointerId,x:event.clientX,y:event.clientY,camera:{...camera},moved:false,node:n,element};
       if(n){const k=key(n);Object.assign(gesture,{key:k,hadOffset:C.own(offsets,k),offset:{x:offsets[k]?.x||0,y:offsets[k]?.y||0},position:{...graphLayout.positions.get(n.key)}});}

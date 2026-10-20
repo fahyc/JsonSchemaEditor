@@ -32,17 +32,57 @@
     const recognized=/Refs?$|^entryContacts$|^location$|^outcome$/i.test(key)||/\b(ID|IDs|reference|references)\b/i.test(s.description||'');
     return {recognized,target:map[target]||'',field:/name.*(?:used by|relationship)|name of the faction/i.test(s.description||'')?'name':target==='system'?'address':target==='outcome'?'outcome':'id'};
   }
-  function dataDeletePlan(state,dataId,path){const source=state.data.find(d=>d.id===dataId),identities=[];
-    for(const n of C.dataNodes(state.schemas,source.schema,state.schemas[source.schema],source.value).nodes)if(within(n.path,path)&&!Array.isArray(n.value)){const type=n.schema?.$ref?.split('/').pop()||n.path.split('/').slice(-2,-1)[0]||'';for(const field of ['id','name','address'])if(typeof n.value[field]==='string'&&n.value[field])identities.push({value:n.value[field],field,type:type.toLowerCase()});}
-    const refs=[];for(const d of state.data.filter(d=>d.schema))for(const n of C.dataNodes(state.schemas,d.schema,state.schemas[d.schema],d.value).nodes){if(d.id===dataId&&within(n.path,path))continue;const a=Array.isArray(n.value),schema=n.effective.schema;for(const [key,value]of Object.entries(n.value)){if(typeof value!=='string')continue;const field=a?C.unesc(n.path.split('/').pop()):key,s=a?schema.items||{}:schema.properties?.[key]||{};const hint=referenceHint(field,n.value,{...s,description:s.description||(a?schema.description:'')});if(!hint.recognized)continue;const match=identities.some(id=>id.value===value&&id.field===hint.field&&(!hint.target||id.type.includes(hint.target)));if(match)refs.push({dataId:d.id,name:d.name,path:n.path+'/'+C.esc(key),value});}}
+  function dataDeletePlan(state,dataId,path){
+    const source=state.data.find(d=>d.id===dataId);if(!source)throw Error('The document no longer exists.');
+    const docs=state.data.filter(d=>d.rawText===undefined),graphs=new Map(),identities=[];
+    for(const d of docs){
+      const nodes=C.dataNodes(state.schemas,d.schema,state.schemas[d.schema]||{},d.value).nodes;graphs.set(d.id,nodes);
+      for(const n of nodes)if(!Array.isArray(n.value))for(const field of ['id','name','address']){
+        const value=n.value[field];if(!['string','number'].includes(typeof value)||value==='')continue;
+        identities.push({dataId:d.id,path:n.path,field,value,type:(n.schema?.$ref?.split('/').pop()||'').toLowerCase()});
+      }
+    }
+    const removed=id=>id.dataId===dataId&&within(id.path,path),deleted=identities.filter(removed),remaining=identities.filter(id=>!removed(id));
+    const parentPath=path.slice(0,path.lastIndexOf('/')),parent=path?C.at(source.value,parentPath):null,index=Array.isArray(parent)?Number(C.unesc(path.split('/').pop())):null;
+    const shifted=p=>{if(index===null||!p.startsWith(parentPath+'/'))return p;const tail=p.slice(parentPath.length+1).split('/'),i=Number(tail[0]);if(Number.isInteger(i)&&i>index){tail[0]=String(i-1);return parentPath+'/'+tail.join('/');}return p;};
+    const refs=[];
+    for(const d of docs)for(const n of graphs.get(d.id)||[]){
+      if(d.id===dataId&&within(n.path,path))continue;
+      const array=Array.isArray(n.value),schema=n.effective.schema||{};
+      for(const [key,value]of Object.entries(n.value)){
+        if(!['string','number'].includes(typeof value))continue;
+        if(!array&&/^(id|name|address)$/i.test(key))continue; // Definitions are never references.
+        const field=array?C.unesc(n.path.split('/').pop()):key,rule=array?schema.items||{}:schema.properties?.[key]||{},originalPath=n.path+'/'+C.esc(key);
+        const add=reason=>refs.push({dataId:d.id,name:d.name,path:d.id===dataId?shifted(originalPath):originalPath,value,reason});
+        // Explicit JSON Pointers have a document and location, unlike ID guesses.
+        if(typeof value==='string'&&(key==='$ref'||/^(?:[^#]+)?#(?:\/|$)/.test(value))){
+          const hash=value.indexOf('#'),file=hash<0?value:value.slice(0,hash);let targetPath;
+          try{targetPath=hash<0?'':decodeURIComponent(value.slice(hash+1));}catch{continue;}
+          if(targetPath&&!targetPath.startsWith('/'))continue;
+          if(!(file?source.name===file:d.id===dataId))continue;
+          if(C.at(source.value,targetPath)===undefined)continue;
+          if(within(targetPath,path))add('The JSON Pointer targets the deleted subtree.');
+          else if(shifted(targetPath)!==targetPath)add('Array indexes shifted; this JSON Pointer may now identify a different value.');
+          continue;
+        }
+        const hint=referenceHint(field,n.value,{...rule,description:rule.description||(array?schema.description:'')});
+        if(/Names?$/i.test(field))hint.field='name';
+        if(!hint.recognized&&!/(?:Refs?|Ids?|Names?)$/i.test(field))continue;
+        const matches=id=>id.value===value&&id.field===hint.field&&(!hint.target||!id.type||id.type.includes(hint.target));
+        if(!deleted.some(matches))continue;
+        // Prefer a document's own matching object. A duplicate document's
+        // references still resolve to its own surviving copy.
+        const local=identities.some(id=>id.dataId===d.id&&matches(id));
+        const survives=remaining.some(id=>(!local||id.dataId===d.id)&&matches(id));
+        if(!survives)add(local?'No matching target remains in this file.':'No matching target remains in the loaded files.');
+      }
+    }
     return {references:refs,containment:path?1:0};
   }
-  function deleteData(state,dataId,path,references){const grouped=new Map();for(const r of [...references,{dataId,path}]){if(!grouped.has(r.dataId))grouped.set(r.dataId,new Set());grouped.get(r.dataId).add(r.path);}
-    for(const [id,paths]of grouped){const d=state.data.find(x=>x.id===id);if(!d)continue;if(paths.has('')){state.data=state.data.filter(x=>x.id!==id);continue;}
-      // Remove through a recursive filter using original paths: array indexes
-      // never drift when deleting several references in the same array.
-      const visit=(v,p)=>{if(Array.isArray(v))return v.flatMap((x,i)=>paths.has(p+'/'+i)?[]:[visit(x,p+'/'+i)]);if(v&&typeof v==='object')return Object.fromEntries(Object.entries(v).filter(([k])=>!paths.has(p+'/'+C.esc(k))).map(([k,x])=>[k,visit(x,p+'/'+C.esc(k))]));return v;};d.value=visit(d.value,'');
-    }
+  function deleteData(state,dataId,path){
+    const d=state.data.find(d=>d.id===dataId);if(!d)throw Error('The document no longer exists.');
+    if(path){if(C.at(d.value,path)===undefined)throw Error('This node no longer exists.');const next=C.clone(d.value);C.remove(next,path);d.value=next;}
+    else state.data=state.data.filter(d=>d.id!==dataId);
     if(!state.data.some(d=>d.id===state.activeData))state.activeData=state.data[0]?.id||null;
   }
   const api={planSchemaDelete,arrayField,replaceFieldType,referenceHint,dataDeletePlan,deleteData};if(typeof module!=='undefined')module.exports=api;root.SchemaEditing=api;
