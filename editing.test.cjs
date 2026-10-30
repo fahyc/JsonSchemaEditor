@@ -58,3 +58,12 @@ test('root schema deletion removes aliases; root data deletion can leave an empt
   const p=E.planSchemaDelete({'a.json':{type:'object'},'b.json':{$ref:'a.json#'}},'a.json','');assert.deepEqual(p.schemas,{});assert.equal(p.references.length,1);
   const state={data:[{id:'a',value:{}}],activeData:'a'};E.deleteData(state,'a','',[]);assert.deepEqual(state.data,[]);assert.equal(state.activeData,null);
 });
+
+test('nullable modifier preserves types and constraints, including references, enums and arrays',()=>{
+  const reg={'s':{$defs:{X:{type:'object',properties:{id:{type:'string'}}}}}};
+  for(const base of [{type:'integer',minimum:2},{enum:['a','b'],type:'string'},{$ref:'#/$defs/X'},{const:'fixed'},{oneOf:[{type:'string'},{type:'number'}]}]){
+    const nullable=E.nullableField(base,true);assert.equal(C.validate(reg,'s',nullable,null).length,0);assert.deepEqual(E.nullableField(nullable,false),base);assert.deepEqual(E.nullableField(nullable,true),nullable);
+  }
+  const a={type:['array','null'],items:{type:'integer'},minItems:2};assert.ok(E.isArrayField(a));const changed=E.replaceFieldType(a,{type:'string'});assert.deepEqual(changed.type,['array','null']);assert.equal(changed.minItems,2);
+  assert.deepEqual(E.nullableInfo({type:['integer','string','null']}).base.type,['integer','string']);
+});

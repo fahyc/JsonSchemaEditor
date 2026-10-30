@@ -26,8 +26,24 @@
     for(const p of pending){try{const target=C.resolve(reg,p.doc,p.out.$ref),nextPath=locations.get(target.key);if(nextPath!==undefined&&nextPath!==target.path)p.out.$ref=(target.doc===p.doc?'':target.doc)+'#'+nextPath;}catch{}}
     return {schemas:next,references:incoming.map(r=>({doc:r.doc,path:r.path})),removedPaths:[...removals].flatMap(([d,ps])=>[...ps].map(p=>({doc:d,path:p}))),containment:!path||path.startsWith('/$defs/')||path.startsWith('/definitions/')?0:1};
   }
-  function arrayField(f,enabled){if(enabled){if(f.type==='array')return C.clone(f);const item=C.clone(f),out={type:'array',items:item};for(const k of ['description','title'])if(C.own(item,k)){out[k]=item[k];delete item[k];}return out;}if(f.type!=='array')return C.clone(f);const out=C.clone(f.items??{});if(!out||typeof out!=='object')return out;for(const k of ['description','title'])if(C.own(f,k))out[k]=f[k];return out;}
-  function replaceFieldType(field,item){if(field.type==='array')return {...C.clone(field),items:C.clone(item)};return {...C.clone(item),...(C.own(field,'description')?{description:field.description}:{})};}
+  const isArrayField=f=>f?.type==='array'||(Array.isArray(f?.type)&&f.type.filter(t=>t!=='null').length===1&&f.type.includes('array'));
+  function nullableInfo(s){
+    if(!s||typeof s!=='object')return {base:s,nullable:false,wrapped:false};
+    if(s.anyOf?.length===2&&Object.keys(s).every(k=>['anyOf','title','description'].includes(k))){
+      const i=s.anyOf.findIndex(v=>v?.type==='null'&&Object.keys(v).length===1);
+      if(i>=0){const base=C.clone(s.anyOf[1-i]);if(base&&typeof base==='object')for(const k of ['title','description'])if(C.own(s,k))base[k]=s[k];return {base,nullable:true,wrapped:true,index:1-i};}
+    }
+    const types=[].concat(s.type||[]),enumNull=s.enum?.includes(null)&&s.enum.length>1;
+    if(((types.includes('null')&&types.some(t=>t!=='null'))||enumNull)&&!C.validate({},'',s,null).length){const base=C.clone(s),rest=types.filter(t=>t!=='null');if(rest.length)base.type=rest.length===1?rest[0]:rest;if(enumNull)base.enum=base.enum.filter(v=>v!==null);return {base,nullable:true,wrapped:false};}
+    return {base:s,nullable:false,wrapped:false};
+  }
+  function nullableField(s,enabled){
+    const info=nullableInfo(s);if(!enabled)return C.clone(info.base);if(info.nullable)return C.clone(s);
+    const base=C.clone(s);if(base?.type&&!base.enum&&!C.own(base,'const')&&!base.$ref&&!base.oneOf&&!base.anyOf&&!base.allOf&&!base.not){base.type=[...new Set([].concat(base.type,'null'))];return base;}
+    const out={anyOf:[base,{type:'null'}]};for(const k of ['title','description'])if(C.own(base,k)){out[k]=base[k];delete base[k];}return out;
+  }
+  function arrayField(f,enabled){if(enabled){if(isArrayField(f))return C.clone(f);const item=C.clone(f),out={type:'array',items:item};for(const k of ['description','title'])if(C.own(item,k)){out[k]=item[k];delete item[k];}return out;}if(!isArrayField(f))return C.clone(f);const out=C.clone(f.items??{});if(!out||typeof out!=='object')return out;for(const k of ['description','title'])if(C.own(f,k))out[k]=f[k];return out;}
+  function replaceFieldType(field,item){if(isArrayField(field))return {...C.clone(field),items:C.clone(item)};return {...C.clone(item),...(C.own(field,'description')?{description:field.description}:{})};}
   function referenceHint(key,parent={},s={}){let target=key.replace(/Refs?$/i,'').toLowerCase();const map={speaker:'contact',entrycontacts:'contact',controller:'faction',minor:'faction',civilian:'faction',faction:'faction',cargo:'cargo',snippet:'storysnippet',system:'system',location:'location',deck:'deck',ship:'ship',contact:'contact',target:(parent.targetType||'').toLowerCase(),outcome:'outcome'};
     const recognized=/Refs?$|^entryContacts$|^location$|^outcome$/i.test(key)||/\b(ID|IDs|reference|references)\b/i.test(s.description||'');
     return {recognized,target:map[target]||'',field:/name.*(?:used by|relationship)|name of the faction/i.test(s.description||'')?'name':target==='system'?'address':target==='outcome'?'outcome':'id'};
@@ -85,5 +101,5 @@
     else state.data=state.data.filter(d=>d.id!==dataId);
     if(!state.data.some(d=>d.id===state.activeData))state.activeData=state.data[0]?.id||null;
   }
-  const api={planSchemaDelete,arrayField,replaceFieldType,referenceHint,dataDeletePlan,deleteData};if(typeof module!=='undefined')module.exports=api;root.SchemaEditing=api;
+  const api={isArrayField,nullableInfo,nullableField,planSchemaDelete,arrayField,replaceFieldType,referenceHint,dataDeletePlan,deleteData};if(typeof module!=='undefined')module.exports=api;root.SchemaEditing=api;
 })(typeof window!=='undefined'?window:globalThis);
